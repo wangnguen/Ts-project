@@ -1,4 +1,5 @@
 import { Response as ExpressResponse } from 'express'
+import type { ResponseOptions, ValidationErrorItem } from '~/common/types/index.js'
 
 declare global {
   namespace Express {
@@ -9,7 +10,7 @@ declare global {
       notFound(message?: string): ExpressResponse
       unauthorized(message?: string): ExpressResponse
       forbidden(message?: string): ExpressResponse
-      validationError(errors: { path: string; message: string }[]): ExpressResponse
+      validationError(errors: ValidationErrorItem[]): ExpressResponse
     }
   }
 }

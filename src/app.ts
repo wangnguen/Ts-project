@@ -5,6 +5,7 @@ import compression from 'compression'
 import rateLimit from 'express-rate-limit'
 import env from '~/common/config/env.js'
 import { errorHandler, notFound } from '~/common/middlewares/error.middleware.js'
+import { extendResponse } from '~/common/middlewares/response.middleware.js'
 
 const app: express.Application = express()
 
@@ -47,6 +48,7 @@ app.use(
 
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+app.use(extendResponse)
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {
