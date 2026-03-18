@@ -7,7 +7,9 @@ const envSchema = z.object({
   DATABASE_URL: z.url()
 })
 
-const validateEnv = () => {
+export type EnvSchema = z.infer<typeof envSchema>
+
+const validateEnv = (): EnvSchema => {
   const result = envSchema.safeParse(process.env)
 
   if (!result.success) {
@@ -19,6 +21,6 @@ const validateEnv = () => {
   return result.data
 }
 
-const env = validateEnv()
+const env: EnvSchema = validateEnv()
 
 export default env
