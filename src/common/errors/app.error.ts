@@ -1,3 +1,6 @@
+import { StatusCodes, ReasonPhrases } from 'http-status-codes'
+import type { ValidationErrorItem } from '@common/types/index.js'
+
 export class AppError extends Error {
   constructor(
     public statusCode: number,
@@ -10,37 +13,37 @@ export class AppError extends Error {
 }
 
 export class BadRequestError extends AppError {
-  constructor(message = 'Bad Request') {
-    super(400, message)
+  constructor(message: string = ReasonPhrases.BAD_REQUEST) {
+    super(StatusCodes.BAD_REQUEST, message)
   }
 }
 
 export class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(401, message)
+  constructor(message: string = ReasonPhrases.UNAUTHORIZED) {
+    super(StatusCodes.UNAUTHORIZED, message)
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = 'Forbidden') {
-    super(403, message)
+  constructor(message: string = ReasonPhrases.FORBIDDEN) {
+    super(StatusCodes.FORBIDDEN, message)
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = 'Not Found') {
-    super(404, message)
+  constructor(message: string = ReasonPhrases.NOT_FOUND) {
+    super(StatusCodes.NOT_FOUND, message)
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(message = 'Conflict') {
-    super(409, message)
+  constructor(message: string = ReasonPhrases.CONFLICT) {
+    super(StatusCodes.CONFLICT, message)
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(public errors: { path: string; message: string }[]) {
-    super(422, 'Validation Error')
+  constructor(public errors: ValidationErrorItem[]) {
+    super(StatusCodes.UNPROCESSABLE_ENTITY, ReasonPhrases.UNPROCESSABLE_ENTITY)
   }
 }
