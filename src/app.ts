@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit'
 import env from '@common/config/env.js'
 import ErrorMiddleware from '@common/middlewares/error.middleware.js'
 import ResponseMiddleware from '@common/middlewares/response.middleware.js'
+import AppDataSource from 'src/databases/data-source.js'
 
 const app: express.Application = express()
 
@@ -48,6 +49,11 @@ app.use(
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 app.use(ResponseMiddleware.extendResponse)
+
+AppDataSource.connect().catch((err) => {
+  console.log(`Connect to db error: ${err}`)
+  process.exit(0)
+})
 
 // Routes
 app.get('/health', (req: Request, res: Response) => {

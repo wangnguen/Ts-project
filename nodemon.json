@@ -2,5 +2,5 @@
   "watch": ["src", ".env"],
   "ext": "ts,js",
   "ignore": ["dist"],
-  "exec": "tsx ./src/index.ts"
+  "exec": "node --import @swc-node/register/esm-register ./src/index.ts"
 }
