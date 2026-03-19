@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from 'express'
 import { ReasonPhrases } from 'http-status-codes'
-import { z } from 'zod/v4'
 import { AppError, ValidationError } from '@common/errors/app.error'
 import env from '@common/config/env'
 
@@ -10,15 +9,6 @@ class ErrorMiddleware {
   }
 
   static errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
-    if (err instanceof z.ZodError) {
-      return res.validationError(
-        err.issues.map((issue) => ({
-          path: issue.path.join('.'),
-          message: issue.message
-        }))
-      )
-    }
-
     if (err instanceof ValidationError) {
       return res.validationError(err.errors)
     }

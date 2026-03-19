@@ -10,7 +10,7 @@ interface ValidationSchema {
 }
 
 class ValidationMiddleware {
-  validate = (schema: ValidationSchema) => {
+  static validate(schema: ValidationSchema) {
     return (req: Request, _res: Response, next: NextFunction) => {
       const errors: ValidationErrorItem[] = []
 

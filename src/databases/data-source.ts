@@ -1,5 +1,6 @@
+import env from '@common/config/env'
 import 'reflect-metadata'
-import { User } from 'src/databases/entities/user.entity'
+import { User } from '@databases/entities/user.entity'
 import { DataSource } from 'typeorm'
 
 class AppDataSource {
@@ -9,13 +10,11 @@ class AppDataSource {
     if (!AppDataSource.instance) {
       AppDataSource.instance = new DataSource({
         type: 'postgres',
-        url: process.env.DATABASE_URL,
-        ssl: {
-          rejectUnauthorized: false
-        },
+        url: env.DATABASE_URL,
+        ssl: env.NODE_ENV === 'development' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
         entities: [User],
         migrations: ['src/migrations/*.{ts,js}'],
-        synchronize: true,
+        synchronize: env.NODE_ENV === 'development',
         logging: false
       })
     }

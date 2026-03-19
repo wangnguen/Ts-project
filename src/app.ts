@@ -4,14 +4,10 @@ import helmet from 'helmet'
 import compression from 'compression'
 import rateLimit from 'express-rate-limit'
 import env from '@common/config/env'
-import ErrorMiddleware from '@common/middlewares/error.middleware'
-import ResponseMiddleware from '@common/middlewares/response.middleware'
-import AppDataSource from 'src/databases/data-source'
-import moduleRoutes from 'src/modules'
+import { ErrorMiddleware, ResponseMiddleware } from '@common/middlewares'
+import moduleRoutes from '@modules/index'
 
 const app: express.Application = express()
-
-app.disable('x-powered-by')
 
 app.use(
   cors({
@@ -51,13 +47,8 @@ app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 app.use(ResponseMiddleware.extendResponse)
 
-AppDataSource.connect().catch((err) => {
-  console.log(`Connect to db error: ${err}`)
-  process.exit(0)
-})
-
 // Routes
-app.use(moduleRoutes)
+app.use('/api/v1', moduleRoutes)
 
 // 404 Handler
 app.use(ErrorMiddleware.notFound)

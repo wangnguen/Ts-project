@@ -10,7 +10,7 @@ export interface ValidationErrorItem {
 }
 
 export interface ResponseTypeData extends Required<Pick<ResponseOptions, 'statusCode'>> {
-  message?: string
+  message: string
   data?: unknown
-  meta?: unknown
+  meta?: Record<string, unknown>
 }

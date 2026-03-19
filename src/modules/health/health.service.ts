@@ -1,5 +1,5 @@
 import env from '@common/config/env'
-import AppDataSource from 'src/databases/data-source'
+import AppDataSource from '@databases/data-source'
 import type { DatabaseStatus, HealthCheck } from './health.types'
 
 class HealthService {

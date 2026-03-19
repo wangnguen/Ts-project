@@ -14,7 +14,8 @@
     "experimentalDecorators": true,
     "paths": {
       "@common/*": ["src/common/*"],
-      "@modules/*": ["src/modules/*"]
+      "@modules/*": ["src/modules/*"],
+      "@databases/*": ["src/databases/*"]
     }
   },
   "include": ["src/**/*"],
