@@ -7,10 +7,10 @@ class HealthController {
     const data = await HealthService.getHealthStatus()
 
     if (data.status === 'unhealthy') {
-      return res.fail(data, { statusCode: StatusCodes.SERVICE_UNAVAILABLE })
+      return res.fail({ message: 'Service unavailable', statusCode: StatusCodes.SERVICE_UNAVAILABLE })
     }
 
-    res.ok(data)
+    res.ok({ data, message: 'Service is healthy' })
   }
 }
 

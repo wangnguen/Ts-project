@@ -1,17 +1,17 @@
 import { Response as ExpressResponse } from 'express'
-import type { ResponseOptions } from '@common/types/index'
+import type { SuccessPayload, ErrorPayload } from '@common/types/index'
 
 declare global {
   namespace Express {
     interface Response {
-      ok<T>(data: T, options?: ResponseOptions): ExpressResponse
-      created<T>(data: T, options?: ResponseOptions): ExpressResponse
-      fail<T>(data: T, options?: ResponseOptions): ExpressResponse
-      notFound<T>(data: T, options?: ResponseOptions): ExpressResponse
-      unauthorized<T>(data: T, options?: ResponseOptions): ExpressResponse
-      forbidden<T>(data: T, options?: ResponseOptions): ExpressResponse
-      validationError<T>(data: T, options?: ResponseOptions): ExpressResponse
-      internalError<T>(data: T, options?: ResponseOptions): ExpressResponse
+      ok<T>(payload?: SuccessPayload<T>): ExpressResponse
+      created<T>(payload?: SuccessPayload<T>): ExpressResponse
+      fail(payload?: ErrorPayload): ExpressResponse
+      notFound(payload?: ErrorPayload): ExpressResponse
+      unauthorized(payload?: ErrorPayload): ExpressResponse
+      forbidden(payload?: ErrorPayload): ExpressResponse
+      validationError(payload?: ErrorPayload): ExpressResponse
+      internalError(payload?: ErrorPayload): ExpressResponse
     }
   }
 }
