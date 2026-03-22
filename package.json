@@ -7,12 +7,22 @@
     "dev": "nodemon",
     "dev:ts": "node -r @swc-node/register --watch src/index.ts",
     "build": "rimraf dist && tsc && tsc-alias",
-    "type-check": "tsc",
+    "type-check": "tsc --noEmit",
     "start": "node dist/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "prettier": "prettier --check .",
-    "prettier:fix": "prettier --write ."
+    "prettier:fix": "prettier --write .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,mts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -33,6 +43,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/types": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.18",
@@ -46,7 +59,9 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.4.0",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
+    "lint-staged": "^16.4.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.3",
