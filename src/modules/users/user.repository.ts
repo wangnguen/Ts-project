@@ -3,31 +3,32 @@ import { CreateUserBody, UpdateUserBody } from './user.dto'
 import { User } from '@entities/user.entity'
 
 class UserRepository {
-  private static appDataSource = AppDataSource.getDataSource()
-  private static userRepository = this.appDataSource.getRepository(User)
+  private static get repo() {
+    return AppDataSource.getDataSource().getRepository(User)
+  }
 
   static create(data: CreateUserBody) {
-    return this.userRepository.save(data)
+    return this.repo.save(data)
   }
   static find() {
-    return this.userRepository.find()
+    return this.repo.find()
   }
   static update(id: string, data: UpdateUserBody) {
-    return this.userRepository.update(id, data)
+    return this.repo.update(id, data)
   }
   static delete(id: string) {
-    return this.userRepository.delete(id)
+    return this.repo.delete(id)
   }
 
   static findByUsername(username: string) {
-    return this.userRepository.findOne({ where: { username } })
+    return this.repo.findOne({ where: { username } })
   }
 
   static findById(id: string) {
-    return this.userRepository.findOne({ where: { id } })
+    return this.repo.findOne({ where: { id } })
   }
   static findByEmail(email: string) {
-    return this.userRepository.findOne({ where: { email } })
+    return this.repo.findOne({ where: { email } })
   }
 }
 

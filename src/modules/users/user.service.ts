@@ -1,11 +1,12 @@
 import { SALT_ROUNDS } from '@common/constants'
 import { ConflictError, NotFoundError } from '@common/errors/app.error'
+import { User } from '@entities/user.entity'
 import { CreateUserBody, UpdateUserBody } from '@modules/users/user.dto'
 import UserRepository from '@modules/users/user.repository'
 import bcrypt from 'bcrypt'
 
 class UserService {
-  static async createUser(data: CreateUserBody) {
+  static async createUser(data: CreateUserBody): Promise<void> {
     const existingUser = await UserRepository.findByUsername(data.username)
     if (existingUser) {
       throw new ConflictError('Username already exists')
@@ -21,11 +22,11 @@ class UserService {
     await UserRepository.create({ ...data, password: hashedPassword })
   }
 
-  static async getUsers() {
+  static async getUsers(): Promise<User[]> {
     return UserRepository.find()
   }
 
-  static async updateUser(id: string, data: UpdateUserBody) {
+  static async updateUser(id: string, data: UpdateUserBody): Promise<void> {
     const existingUser = await UserRepository.findById(id)
     if (!existingUser) {
       throw new NotFoundError('User not found')
@@ -45,11 +46,12 @@ class UserService {
       }
     }
 
-    if (data.password) {
-      data.password = await bcrypt.hash(data.password, SALT_ROUNDS)
+    const updateData = { ...data }
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, SALT_ROUNDS)
     }
 
-    return UserRepository.update(id, data)
+    await UserRepository.update(id, updateData)
   }
 
   static async deleteUser(id: string) {
@@ -60,7 +62,7 @@ class UserService {
     return result
   }
 
-  static async getUserById(id: string) {
+  static async getUserById(id: string): Promise<User> {
     const existingUser = await UserRepository.findById(id)
     if (!existingUser) {
       throw new NotFoundError('User not found')

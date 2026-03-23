@@ -1,18 +1,18 @@
 import { Router } from 'express'
 import UserController from './user.controller'
-import { CreateUserBodySchema, UpdateUserBodySchema } from './user.dto'
-import { ValidationMiddleware } from '@common/middlewares'
+import { CreateUserBodySchema, UpdateUserBodySchema, UuidParamSchema } from './user.dto'
+import { validateBody, validateParam } from '@common/middlewares'
 
 const router = Router()
 
 router.get('/', UserController.getUsers)
 
-router.post('/', ValidationMiddleware.validate({ body: CreateUserBodySchema }), UserController.createUser)
+router.post('/', validateBody(CreateUserBodySchema), UserController.createUser)
 
-router.patch('/:id', ValidationMiddleware.validate({ body: UpdateUserBodySchema }), UserController.updateUser)
+router.patch('/:id', validateParam(UuidParamSchema), validateBody(UpdateUserBodySchema), UserController.updateUser)
 
-router.delete('/:id', UserController.deleteUser)
+router.delete('/:id', validateParam(UuidParamSchema), UserController.deleteUser)
 
-router.get('/:id', UserController.getUserById)
+router.get('/:id', validateParam(UuidParamSchema), UserController.getUserById)
 
 export default router

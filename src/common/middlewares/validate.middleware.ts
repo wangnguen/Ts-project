@@ -3,40 +3,26 @@ import { z } from 'zod/v4'
 import { ValidationError } from '@common/errors/app.error'
 import { ValidationErrorItem } from '@common/types/response.type'
 
-interface ValidationSchema {
-  body?: z.ZodType
-  params?: z.ZodType
-  query?: z.ZodType
-}
-
-class ValidationMiddleware {
-  static validate(schema: ValidationSchema) {
+function createValidator(source: 'body' | 'params' | 'query') {
+  return (schema: z.ZodType) => {
     return (req: Request, _res: Response, next: NextFunction) => {
-      const errors: ValidationErrorItem[] = []
+      const result = schema.safeParse(req[source])
 
-      for (const [key, zodSchema] of Object.entries(schema)) {
-        if (!zodSchema) continue
-
-        const result = zodSchema.safeParse(req[key as keyof typeof schema])
-
-        if (!result.success) {
-          for (const issue of result.error.issues) {
-            errors.push({
-              field: issue.path.length ? `${key}.${issue.path.join('.')}` : key,
-              message: issue.message,
-              code: issue.code
-            })
-          }
-        }
-      }
-
-      if (errors.length > 0) {
+      if (!result.success) {
+        const errors: ValidationErrorItem[] = result.error.issues.map((issue) => ({
+          field: issue.path.length ? `${source}.${issue.path.join('.')}` : source,
+          message: issue.message,
+          code: issue.code
+        }))
         throw new ValidationError(errors)
       }
 
+      req[source] = result.data
       next()
     }
   }
 }
 
-export default ValidationMiddleware
+export const validateBody = createValidator('body')
+export const validateParam = createValidator('params')
+export const validateQuery = createValidator('query')

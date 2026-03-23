@@ -1,5 +1,4 @@
 import { Request, Response } from 'express'
-import { StatusCodes } from 'http-status-codes'
 import HealthService from './health.service'
 
 class HealthController {
@@ -7,10 +6,10 @@ class HealthController {
     const data = await HealthService.getHealthStatus()
 
     if (data.status === 'unhealthy') {
-      return res.fail({ message: 'Service unavailable', statusCode: StatusCodes.SERVICE_UNAVAILABLE })
+      return res.fail({ message: 'Service unavailable', statusCode: 503 })
     }
 
-    res.ok({ data, message: 'Service is healthy' })
+    res.ok(data, { message: 'Service is healthy' })
   }
 }
 

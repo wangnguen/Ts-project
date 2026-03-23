@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express'
 import { ReasonPhrases } from 'http-status-codes'
 import { AppError, ValidationError } from '@common/errors/app.error'
 import env from '@common/config/env'
+import logger from '@common/config/logger'
 
 class ErrorMiddleware {
   static notFound(req: Request, res: Response) {
@@ -17,10 +18,10 @@ class ErrorMiddleware {
       return res.fail({ message: err.message, statusCode: err.statusCode })
     }
 
-    console.error(err.stack)
+    logger.error(err, 'Unhandled error')
     res.internalError({
       message: ReasonPhrases.INTERNAL_SERVER_ERROR,
-      ...(env.NODE_ENV === 'development' && { stack: err.stack })
+      ...(env.NODE_ENV === 'development' && { errors: [{ field: 'stack', message: err.stack || '' }] })
     })
   }
 }

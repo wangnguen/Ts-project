@@ -1,6 +1,7 @@
 import env from '@common/config/env'
+import logger from '@common/config/logger'
+import path from 'node:path'
 import 'reflect-metadata'
-import { User } from '@databases/entities/user.entity'
 import { DataSource } from 'typeorm'
 
 class AppDataSource {
@@ -12,9 +13,9 @@ class AppDataSource {
         type: 'postgres',
         url: env.DATABASE_URL,
         ssl: env.NODE_ENV === 'development' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
-        entities: [User],
-        migrations: ['src/migrations/*.{ts,js}'],
-        synchronize: env.NODE_ENV === 'development',
+        entities: [path.join(__dirname, 'entities', '*.entity.{ts,js}')],
+        migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
+        synchronize: false,
         logging: false
       })
     }
@@ -31,7 +32,7 @@ class AppDataSource {
 
     if (!dataSource.isInitialized) {
       await dataSource.initialize()
-      console.log('Database connected')
+      logger.info('Database connected')
     }
 
     return dataSource

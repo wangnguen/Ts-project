@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import env from '@common/config/env'
+import logger from '@common/config/logger'
 import AppDataSource from '@databases/data-source'
 import app from './app'
 
@@ -7,15 +8,37 @@ const bootstrap = async () => {
   await AppDataSource.connect()
 
   const server = app.listen(env.PORT, () => {
-    console.log(`Server is running on port ${env.PORT}`)
+    logger.info(`Server is running on port ${env.PORT}`)
   })
 
-  process.on('SIGINT', () => {
-    server.close(() => console.log(`Exit Server Express`))
-  })
+  const gracefulShutdown = async (signal: string) => {
+    logger.info(`${signal} received. Shutting down gracefully...`)
+
+    server.close(async () => {
+      try {
+        const dataSource = AppDataSource.getDataSource()
+        if (dataSource.isInitialized) {
+          await dataSource.destroy()
+          logger.info('Database connection closed')
+        }
+      } catch (err) {
+        logger.error(err, 'Error closing database connection')
+      }
+      logger.info('Server closed')
+      process.exit(0)
+    })
+
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout')
+      process.exit(1)
+    }, 10_000)
+  }
+
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
 }
 
 bootstrap().catch((err) => {
-  console.error('Failed to start server', err.message)
+  logger.fatal(err, 'Failed to start server')
   process.exit(1)
 })
