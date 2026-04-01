@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
+import cookieParser from 'cookie-parser'
 import rateLimit from 'express-rate-limit'
 import env from '@common/config/env'
 import { ErrorMiddleware, ResponseMiddleware } from '@common/middlewares'
@@ -45,6 +46,7 @@ app.use(
 
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+app.use(cookieParser())
 app.use(ResponseMiddleware.extendResponse)
 
 // Routes
