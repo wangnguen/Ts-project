@@ -1,4 +1,4 @@
-import { pick } from 'lodash'
+import pick from 'lodash/pick'
 
 export const getInfoData = <T extends object, K extends keyof T>({
   fields,

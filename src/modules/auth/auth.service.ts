@@ -1,5 +1,4 @@
-import env from '@common/config/env'
-import { SALT_ROUNDS } from '@common/constants'
+import { JWT_REFRESH_EXPIRES_IN_MS, MAX_SESSION_LIFETIME_MS, SALT_ROUNDS } from '@common/constants'
 import { ConflictError, UnauthorizedError } from '@common/errors/app.error'
 import { getInfoData } from '@common/utils'
 import { LoginBody, RegisterBody } from '@modules/auth/auth.dto'
@@ -14,56 +13,56 @@ class AuthService {
   }
 
   static async login(dto: LoginBody): Promise<AuthResponse> {
-    const isExistingUser = await AuthRepository.findByEmailWithPassword(dto.email)
-    if (!isExistingUser) {
+    const existUser = await AuthRepository.findByEmailWithPassword(dto.email)
+    if (!existUser) {
       throw new UnauthorizedError('User or password is invalid')
     }
 
-    const isPasswordValid: boolean = await AuthService.comparePassword(dto.password, isExistingUser.password)
+    const isPasswordValid: boolean = await AuthService.comparePassword(dto.password, existUser.password)
     if (!isPasswordValid) {
       throw new UnauthorizedError('User or password is invalid')
     }
 
     const accessToken = TokenService.generateAccessToken({
-      sub: isExistingUser.id,
-      email: isExistingUser.email,
-      role: isExistingUser.role
+      sub: existUser.id,
+      email: existUser.email,
+      role: existUser.role
     })
 
     const refreshToken = TokenService.generateRefreshToken({
-      sub: isExistingUser.id
+      sub: existUser.id
     })
 
-    const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRES_IN * 1000)
-
-    Promise.all([
+    await Promise.all([
       AuthRepository.saveRefreshToken({
         token: refreshToken,
-        userId: isExistingUser.id,
-        expiresAt
+        userId: existUser.id,
+        expiresAt: new Date(Date.now() + JWT_REFRESH_EXPIRES_IN_MS),
+        absoluteExpiresAt: new Date(Date.now() + MAX_SESSION_LIFETIME_MS)
       }),
-      AuthRepository.updateLastLogin(isExistingUser.id)
+      AuthRepository.updateLastLogin(existUser.id),
+      AuthRepository.deleteExpiredTokensForUser(existUser.id)
     ])
 
     const user = getInfoData({
       fields: ['id', 'username', 'email', 'fullName', 'role', 'isVerified'],
-      object: isExistingUser
-    }) as AuthUser
+      object: existUser
+    })
 
     return { accessToken, refreshToken, user }
   }
 
   static async register(dto: RegisterBody): Promise<AuthUser> {
-    const [isExistingEmail, isExistingUsername] = await Promise.all([
+    const [existingEmail, existingUsername] = await Promise.all([
       AuthRepository.findByEmail(dto.email),
       AuthRepository.findByUsername(dto.username)
     ])
 
-    if (isExistingEmail) {
+    if (existingEmail) {
       throw new ConflictError('Email is already in use')
     }
 
-    if (isExistingUsername) {
+    if (existingUsername) {
       throw new ConflictError('Username is already in use')
     }
 
@@ -73,16 +72,49 @@ class AuthService {
     const user = getInfoData({
       fields: ['id', 'username', 'email', 'fullName', 'role', 'isVerified'],
       object: newUser
-    }) as AuthUser
+    })
 
     return user
   }
 
-  static async logout() {
-    return 'logout'
+  static async logout(refreshToken: string): Promise<void> {
+    await AuthRepository.deleteRefreshToken(refreshToken)
   }
-  static async refreshToken() {
-    return 'refreshToken'
+
+  static async refreshToken(refreshToken: string): Promise<Pick<AuthResponse, 'accessToken' | 'refreshToken'>> {
+    let payload: { sub: string }
+    try {
+      payload = TokenService.verifyRefreshToken(refreshToken)
+    } catch {
+      throw new UnauthorizedError('Invalid or expired refresh token')
+    }
+
+    const storedToken = await AuthRepository.findRefreshToken(refreshToken)
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      throw new UnauthorizedError('Refresh token has been revoked or expired')
+    }
+
+    if (storedToken.absoluteExpiresAt < new Date()) {
+      throw new UnauthorizedError('Session expired. Please login again.')
+    }
+
+    await AuthRepository.deleteRefreshToken(refreshToken)
+
+    const user = await AuthRepository.findById(payload.sub)
+    if (!user) throw new UnauthorizedError('User not found')
+
+    const accessToken = TokenService.generateAccessToken({ sub: user.id, email: user.email, role: user.role })
+    const newRefreshToken = TokenService.generateRefreshToken({ sub: user.id })
+
+    const expiresAt = new Date(Date.now() + JWT_REFRESH_EXPIRES_IN_MS)
+    await AuthRepository.saveRefreshToken({
+      token: newRefreshToken,
+      userId: user.id,
+      expiresAt,
+      absoluteExpiresAt: storedToken.absoluteExpiresAt
+    })
+
+    return { accessToken, refreshToken: newRefreshToken }
   }
 }
 

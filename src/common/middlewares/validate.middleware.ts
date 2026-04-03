@@ -14,7 +14,7 @@ function createValidator(source: 'body' | 'params' | 'query') {
           message: issue.message,
           code: issue.code
         }))
-        throw new ValidationError(errors)
+        return next(new ValidationError(errors))
       }
 
       req[source] = result.data
