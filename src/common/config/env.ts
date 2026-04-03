@@ -6,6 +6,7 @@ const envSchema = z.object({
   CLIENT_URL: z.url().default('http://localhost:3000'),
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.coerce
     .number()
     .int()

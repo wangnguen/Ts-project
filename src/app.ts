@@ -13,6 +13,7 @@ const app: express.Application = express()
 app.use(
   cors({
     origin: env.CLIENT_URL,
+    credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['X-Request-Id']
   })
