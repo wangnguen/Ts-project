@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit'
 import env from '@common/config/env'
 import { ErrorMiddleware, ResponseMiddleware } from '@common/middlewares'
 import moduleRoutes from '@modules/index'
+import { RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from '@common/constants'
 
 const app: express.Application = express()
 
@@ -37,8 +38,8 @@ app.use(compression())
 
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 100,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    limit: RATE_LIMIT_MAX_REQUESTS,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }

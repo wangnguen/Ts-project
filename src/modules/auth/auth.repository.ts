@@ -2,6 +2,7 @@ import AppDataSource from '@databases/data-source'
 import { RefreshToken } from '@entities/refresh-token.entity'
 import { User } from '@entities/user.entity'
 import { RegisterBody } from '@modules/auth/auth.dto'
+import { Brackets, In } from 'typeorm'
 
 class AuthRepository {
   private static get userRepo() {
@@ -41,21 +42,28 @@ class AuthRepository {
     return this.userRepo.update(id, { lastLoginAt: new Date() })
   }
 
-  static saveRefreshToken(data: { token: string; userId: string; expiresAt: Date; absoluteExpiresAt: Date }) {
-    const newRefreshToken = this.refreshTokenRepo.create(data)
+  static saveRefreshToken(data: { tokenHash: string; userId: string; expiresAt: Date; absoluteExpiresAt: Date }) {
+    const newRefreshToken = this.refreshTokenRepo.create({
+      token: data.tokenHash,
+      userId: data.userId,
+      expiresAt: data.expiresAt,
+      absoluteExpiresAt: data.absoluteExpiresAt
+    })
     return this.refreshTokenRepo.save(newRefreshToken)
   }
 
-  static findRefreshToken(token: string) {
-    return this.refreshTokenRepo.findOne({ where: { token } })
+  static findRefreshToken(tokenHash: string, legacyRawToken?: string) {
+    const tokenCandidates = legacyRawToken ? [tokenHash, legacyRawToken] : [tokenHash]
+    return this.refreshTokenRepo.findOne({ where: { token: In(tokenCandidates) } })
   }
 
-  static deleteRefreshToken(token: string) {
-    return this.refreshTokenRepo.delete({ token })
+  static deleteRefreshToken(tokenHash: string, legacyRawToken?: string) {
+    const tokenCandidates = legacyRawToken ? [tokenHash, legacyRawToken] : [tokenHash]
+    return this.refreshTokenRepo.delete({ token: In(tokenCandidates) })
   }
 
-  static deleteAllRefreshTokensForUser(userId: string) {
-    return this.refreshTokenRepo.delete({ userId })
+  static deleteRefreshTokenById(id: string) {
+    return this.refreshTokenRepo.delete({ id })
   }
 
   static deleteExpiredTokensForUser(userId: string) {
@@ -63,8 +71,9 @@ class AuthRepository {
       .createQueryBuilder()
       .delete()
       .where('user_id = :userId', { userId })
-      .andWhere('expires_at < :now', { now: new Date() })
-      .andWhere('absolute_expires_at < :now', { now: new Date() })
+      .andWhere(new Brackets((qb) => qb.where('expires_at < :now').orWhere('absolute_expires_at < :now')), {
+        now: new Date()
+      })
       .execute()
   }
 }

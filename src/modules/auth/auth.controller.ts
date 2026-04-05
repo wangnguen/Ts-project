@@ -1,11 +1,11 @@
 import env from '@common/config/env'
-import { JWT_REFRESH_EXPIRES_IN_MS } from '@common/constants'
+import { JWT_REFRESH_EXPIRES_IN_MS } from '@modules/auth/auth.constant'
 import { LoginBody, RegisterBody } from '@modules/auth/auth.dto'
 import AuthService from '@modules/auth/auth.service'
 import { Request, Response } from 'express'
 
 class AuthController {
-  private static async handleRefreshTokenCookie(res: Response, refreshToken: string) {
+  private static handleRefreshTokenCookie(res: Response, refreshToken: string) {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: env.NODE_ENV === 'production',
@@ -31,10 +31,6 @@ class AuthController {
 
   static async logout(req: Request, res: Response) {
     const refreshToken = req.cookies.refreshToken
-    if (!refreshToken) {
-      return res.fail({ statusCode: 401, message: 'Unauthorized' })
-    }
-
     await AuthService.logout(refreshToken)
     res.clearCookie('refreshToken')
     res.ok(null, { message: 'Logout successful' })
@@ -42,10 +38,6 @@ class AuthController {
 
   static async refreshToken(req: Request, res: Response) {
     const refreshToken = req.cookies.refreshToken
-    if (!refreshToken) {
-      return res.fail({ statusCode: 401, message: 'Unauthorized' })
-    }
-
     const { accessToken, refreshToken: newRefreshToken } = await AuthService.refreshToken(refreshToken)
     AuthController.handleRefreshTokenCookie(res, newRefreshToken)
     res.ok({ accessToken }, { message: 'Token refreshed successfully' })

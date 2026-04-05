@@ -16,7 +16,12 @@ const envSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(7 * 24 * 60 * 60)
+    .default(7 * 24 * 60 * 60),
+  MAX_SESSION_LIFETIME_IN: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(30 * 24 * 60 * 60)
 })
 
 export type EnvSchema = z.infer<typeof envSchema>

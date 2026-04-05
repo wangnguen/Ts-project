@@ -5,6 +5,14 @@ type SuccessPayload = ResponseType.SuccessPayload
 type ErrorPayload = ResponseType.ErrorPayload
 declare global {
   namespace Express {
+    interface Request {
+      user?: {
+        id: string
+        email: string
+        role: string
+      }
+      refreshUserId?: string
+    }
     interface Response {
       ok<T>(data: T, payload?: SuccessPayload): ExpressResponse
       created<T>(data: T, payload?: SuccessPayload): ExpressResponse
