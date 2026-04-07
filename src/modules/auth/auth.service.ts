@@ -1,18 +1,14 @@
+import { env } from '@common/config'
 import { SALT_ROUNDS } from '@common/constants'
 import { ConflictError, UnauthorizedError } from '@common/errors/app.error'
-import { getInfoData } from '@common/utils'
-import { JWT_REFRESH_EXPIRES_IN_MS, MAX_SESSION_LIFETIME_IN_MS } from '@modules/auth/auth.constant'
-import { LoginBody, RegisterBody } from '@modules/auth/auth.dto'
+import { JWTService } from '@common/services'
+import { AuthResponse, AuthUser } from '@common/types'
 import AuthRepository from '@modules/auth/auth.repository'
-import { AuthResponse, AuthUser } from '@modules/auth/auth.types'
-import TokenService from '@modules/auth/token.service'
+import { LoginBody, RegisterBody } from '@modules/auth/dto'
 import bcrypt from 'bcrypt'
+import { instanceToPlain } from 'class-transformer'
 
 class AuthService {
-  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
-  }
-
   static async login(dto: LoginBody): Promise<AuthResponse> {
     const existUser = await AuthRepository.findByEmailWithPassword(dto.email)
     if (!existUser) {
@@ -24,32 +20,29 @@ class AuthService {
       throw new UnauthorizedError('User or password is invalid')
     }
 
-    const accessToken = TokenService.generateAccessToken({
+    const accessToken = JWTService.generateAccessToken({
       sub: existUser.id,
       email: existUser.email,
       role: existUser.role
     })
 
-    const refreshToken = TokenService.generateRefreshToken({
+    const refreshToken = JWTService.generateRefreshToken({
       sub: existUser.id
     })
-    const refreshTokenHash = TokenService.hashRefreshToken(refreshToken)
+    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
 
     await Promise.all([
       AuthRepository.saveRefreshToken({
         tokenHash: refreshTokenHash,
         userId: existUser.id,
-        expiresAt: new Date(Date.now() + JWT_REFRESH_EXPIRES_IN_MS),
-        absoluteExpiresAt: new Date(Date.now() + MAX_SESSION_LIFETIME_IN_MS)
+        expiresAt: new Date(Date.now() + Number(env.JWT_REFRESH_EXPIRES_IN) * 1000),
+        absoluteExpiresAt: new Date(Date.now() + Number(env.MAX_SESSION_LIFETIME_IN) * 1000)
       }),
       AuthRepository.updateLastLogin(existUser.id),
       AuthRepository.deleteExpiredTokensForUser(existUser.id)
     ])
 
-    const user = getInfoData({
-      fields: ['id', 'username', 'email', 'fullName', 'role', 'isVerified'],
-      object: existUser
-    })
+    const user = instanceToPlain(existUser) as AuthUser
 
     return { accessToken, refreshToken, user }
   }
@@ -71,31 +64,23 @@ class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS)
     const newUser = await AuthRepository.create({ ...dto, password: hashedPassword })
 
-    const user = getInfoData({
-      fields: ['id', 'username', 'email', 'fullName', 'role', 'isVerified'],
-      object: newUser
-    })
+    const user = instanceToPlain(newUser) as AuthUser
 
     return user
   }
 
   static async logout(refreshToken?: string): Promise<void> {
-    if (!refreshToken) return
-
-    const refreshTokenHash = TokenService.hashRefreshToken(refreshToken)
-    await AuthRepository.deleteRefreshToken(refreshTokenHash, refreshToken)
+    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken as string)
+    await AuthRepository.deleteRefreshToken(refreshTokenHash)
   }
 
-  static async refreshToken(refreshToken: string): Promise<Pick<AuthResponse, 'accessToken' | 'refreshToken'>> {
-    let payload: { sub: string }
-    try {
-      payload = TokenService.verifyRefreshToken(refreshToken)
-    } catch {
-      throw new UnauthorizedError('Invalid or expired refresh token')
-    }
-
-    const refreshTokenHash = TokenService.hashRefreshToken(refreshToken)
-    const storedToken = await AuthRepository.findRefreshToken(refreshTokenHash, refreshToken)
+  static async refreshToken(
+    refreshToken: string,
+    userId: string
+  ): Promise<Pick<AuthResponse, 'accessToken' | 'refreshToken'>> {
+    const payload = { sub: userId }
+    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
+    const storedToken = await AuthRepository.findRefreshToken(refreshTokenHash)
     if (!storedToken || storedToken.expiresAt < new Date()) {
       throw new UnauthorizedError('Invalid or expired refresh token')
     }
@@ -109,18 +94,22 @@ class AuthService {
     const user = await AuthRepository.findById(payload.sub)
     if (!user) throw new UnauthorizedError('User not found')
 
-    const accessToken = TokenService.generateAccessToken({ sub: user.id, email: user.email, role: user.role })
-    const newRefreshToken = TokenService.generateRefreshToken({ sub: user.id })
-    const newRefreshTokenHash = TokenService.hashRefreshToken(newRefreshToken)
+    const accessToken = JWTService.generateAccessToken({ sub: user.id, email: user.email, role: user.role })
+    const newRefreshToken = JWTService.generateRefreshToken({ sub: user.id })
+    const newRefreshTokenHash = JWTService.hashRefreshToken(newRefreshToken)
 
     await AuthRepository.saveRefreshToken({
       tokenHash: newRefreshTokenHash,
       userId: user.id,
-      expiresAt: new Date(Date.now() + JWT_REFRESH_EXPIRES_IN_MS),
+      expiresAt: new Date(Date.now() + Number(env.JWT_REFRESH_EXPIRES_IN) * 1000),
       absoluteExpiresAt: storedToken.absoluteExpiresAt
     })
 
     return { accessToken, refreshToken: newRefreshToken }
+  }
+
+  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword)
   }
 }
 

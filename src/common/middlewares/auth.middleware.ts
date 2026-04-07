@@ -1,6 +1,8 @@
+import { RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from '@common/constants/config.constant'
 import { ForbiddenError, UnauthorizedError } from '@common/errors/app.error'
-import TokenService from '@modules/auth/token.service'
+import { JWTService } from '@common/services'
 import { NextFunction, Request, Response } from 'express'
+import rateLimit from 'express-rate-limit'
 
 class AuthMiddleware {
   static authenticate(req: Request, _res: Response, next: NextFunction) {
@@ -13,7 +15,7 @@ class AuthMiddleware {
     const token = authHeader.split(' ')[1]
 
     try {
-      const payload = TokenService.verifyAccessToken(token)
+      const payload = JWTService.verifyAccessToken(token)
       req.user = {
         id: payload.sub,
         email: payload.email,
@@ -30,7 +32,7 @@ class AuthMiddleware {
     if (!refreshToken) return next(new UnauthorizedError('Invalid or expired refresh token'))
 
     try {
-      const payload = TokenService.verifyRefreshToken(refreshToken)
+      const payload = JWTService.verifyRefreshToken(refreshToken)
 
       req.refreshUserId = payload.sub
 

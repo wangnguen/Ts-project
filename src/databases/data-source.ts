@@ -3,6 +3,7 @@ import logger from '@common/config/logger'
 import path from 'node:path'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies'
 
 class AppDataSource {
   private static instance: DataSource
@@ -16,7 +17,8 @@ class AppDataSource {
         entities: [path.join(__dirname, 'entities', '*.entity.{ts,js}')],
         migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
         synchronize: false,
-        logging: false
+        logging: false,
+        namingStrategy: new SnakeNamingStrategy()
       })
     }
 

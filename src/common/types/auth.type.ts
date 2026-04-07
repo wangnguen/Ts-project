@@ -1,4 +1,4 @@
-import { UserRole } from '@entities/user.entity'
+import { UserRole } from '@common/constants'
 
 export type AuthTokens = {
   accessToken: string
@@ -16,4 +16,14 @@ export type AuthUser = {
 
 export type AuthResponse = AuthTokens & {
   user: AuthUser
+}
+
+export type AccessTokenPayload = {
+  sub: string
+  email: string
+  role: string
+}
+
+export type RefreshTokenPayload = {
+  sub: string
 }

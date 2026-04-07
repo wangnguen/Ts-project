@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { ReasonPhrases, StatusCodes } from 'http-status-codes'
-import type { ResponseType } from '@common/types/index'
 import { ApiErrorResponse, ApiSuccessResponse } from '@common/models/api-response.model'
-
-type SuccessData<T> = ResponseType.SuccessData<T>
-type SuccessPayload = ResponseType.SuccessPayload
-type ErrorPayload = ResponseType.ErrorPayload
+import { ErrorPayload, SuccessData, SuccessPayload } from '@common/types'
 
 class ResponseMiddleware {
   private static sendSuccess<T>(

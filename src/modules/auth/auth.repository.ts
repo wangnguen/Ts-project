@@ -1,7 +1,7 @@
 import AppDataSource from '@databases/data-source'
 import { RefreshToken } from '@entities/refresh-token.entity'
 import { User } from '@entities/user.entity'
-import { RegisterBody } from '@modules/auth/auth.dto'
+import { RegisterBody } from '@modules/auth/dto'
 import { Brackets, In } from 'typeorm'
 
 class AuthRepository {
@@ -52,13 +52,13 @@ class AuthRepository {
     return this.refreshTokenRepo.save(newRefreshToken)
   }
 
-  static findRefreshToken(tokenHash: string, legacyRawToken?: string) {
-    const tokenCandidates = legacyRawToken ? [tokenHash, legacyRawToken] : [tokenHash]
+  static findRefreshToken(tokenHash: string) {
+    const tokenCandidates = [tokenHash]
     return this.refreshTokenRepo.findOne({ where: { token: In(tokenCandidates) } })
   }
 
-  static deleteRefreshToken(tokenHash: string, legacyRawToken?: string) {
-    const tokenCandidates = legacyRawToken ? [tokenHash, legacyRawToken] : [tokenHash]
+  static deleteRefreshToken(tokenHash: string) {
+    const tokenCandidates = [tokenHash]
     return this.refreshTokenRepo.delete({ token: In(tokenCandidates) })
   }
 

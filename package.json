@@ -33,6 +33,7 @@
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -47,6 +48,7 @@
     "pino": "^10.3.1",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.28",
+    "typeorm-naming-strategies": "^4.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
