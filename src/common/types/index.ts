@@ -1,1 +1,2 @@
-export * as ResponseType from './response.type'
+export * from './response.type'
+export * from './auth.type'

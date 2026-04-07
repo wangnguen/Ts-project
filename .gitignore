@@ -32,3 +32,4 @@ coverage
 
 # Agent files
 .agent/
+.claude/

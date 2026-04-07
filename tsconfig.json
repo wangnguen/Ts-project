@@ -9,14 +9,13 @@
     "strict": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "paths": {
-      "@common/*": ["src/common/*"],
-      "@modules/*": ["src/modules/*"],
-      "@entities/*": ["src/databases/entities/*"],
-      "@databases/*": ["src/databases/*"]
+      "@common/*": ["./src/common/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@entities/*": ["./src/databases/entities/*"],
+      "@databases/*": ["./src/databases/*"]
     }
   },
   "include": ["src/**/*"],
