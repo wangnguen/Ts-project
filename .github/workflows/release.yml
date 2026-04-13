@@ -109,3 +109,41 @@ jobs:
           echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Image** | \`${{ env.IMAGE_NAME }}:${{ inputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Git Tag** | ${{ inputs.create_git_tag && 'Created' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Telegram Notification
+    runs-on: ubuntu-latest
+    needs: [ci-check, release]
+    if: always()
+    steps:
+      - name: Set result status
+        id: status
+        run: |
+          if [ "${{ needs.release.result }}" = "success" ]; then
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "text=SUCCESS" >> $GITHUB_OUTPUT
+          else
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "text=FAILED" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          disable_web_page_preview: true
+          message: |
+            ${{ steps.status.outputs.emoji }} *Release ${{ steps.status.outputs.text }}*
+
+            *Project:* `api-ecommerce`
+            *Version:* `v${{ inputs.version }}`
+            *Environment:* `${{ inputs.environment }}`
+            *Branch:* `${{ github.ref_name }}`
+            *Triggered by:* `${{ github.actor }}`
+
+            *Docker Image:*
+            `${{ env.IMAGE_NAME }}:${{ inputs.version }}`
+
+            [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
