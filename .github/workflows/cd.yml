@@ -1,0 +1,98 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.vscode/**'
+      - '.editorconfig'
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/api-ecommerce
+
+jobs:
+  ci-check:
+    name: CI Checks
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  docker:
+    name: Build & Push to Docker Hub
+    runs-on: ubuntu-latest
+    needs: ci-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  notify:
+    name: Telegram Notification
+    runs-on: ubuntu-latest
+    needs: [ci-check, docker]
+    if: always()
+    steps:
+      - name: Set result status
+        id: status
+        run: |
+          if [ "${{ needs.docker.result }}" = "success" ]; then
+            echo "emoji=✅" >> $GITHUB_OUTPUT
+            echo "text=SUCCESS" >> $GITHUB_OUTPUT
+          else
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "text=FAILED" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          disable_web_page_preview: true
+          message: |
+            ${{ steps.status.outputs.emoji }} *CD ${{ steps.status.outputs.text }}*
+
+            *Project:* `api-ecommerce`
+            *Branch:* `${{ github.ref_name }}`
+            *Commit:* `${{ github.event.head_commit.message }}`
+            *Pushed by:* `${{ github.actor }}`
+
+            *Docker Image:*
+            `${{ env.IMAGE_NAME }}:latest`
+
+            [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
