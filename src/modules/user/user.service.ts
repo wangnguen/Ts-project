@@ -1,5 +1,10 @@
+import bcrypt from 'bcrypt'
+import { instanceToPlain } from 'class-transformer'
+
 import { ConflictError, NotFoundError } from '@common/errors'
-import { UpdateUserBody } from '@modules/user/dto'
+import { SALT_ROUNDS } from '@common/constants'
+
+import { UpdateUserBody, UpdateUserPasswordBody } from './dto'
 import UserRepository from '@modules/user/user.repository'
 
 class UserService {
@@ -9,10 +14,12 @@ class UserService {
       throw new NotFoundError('User not found')
     }
 
-    return user
+    const plainUser = instanceToPlain(user)
+
+    return plainUser
   }
 
-  static async updateUserInfo(id: string, dto: Partial<UpdateUserBody>) {
+  static async updateUserInfo(id: string, dto: UpdateUserBody) {
     const user = await UserRepository.getUserById(id)
     if (!user) {
       throw new NotFoundError('User not found')
@@ -30,7 +37,34 @@ class UserService {
       throw new NotFoundError('User not found')
     }
 
-    return updatedUser
+    const plainUpdatedUser = instanceToPlain(updatedUser)
+    return plainUpdatedUser
+  }
+  static async updateUserPassword(id: string, dto: UpdateUserPasswordBody) {
+    const user = await UserRepository.getUserWithPassword(id)
+    if (!user) {
+      throw new NotFoundError('User not found')
+    }
+
+    const isCurrentPasswordValid = await this.comparePassword(dto.currentPassword, user.password)
+    if (!isCurrentPasswordValid) {
+      throw new ConflictError('Current password is incorrect')
+    }
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS)
+    await UserRepository.updateUserPassword(id, newPasswordHash)
+  }
+
+  static async deleteUser(id: string) {
+    const user = await UserRepository.getUserById(id)
+    if (!user) {
+      throw new NotFoundError('User not found')
+    }
+
+    await UserRepository.softDeleteUser(id)
+  }
+
+  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword)
   }
 }
 

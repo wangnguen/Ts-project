@@ -14,6 +14,18 @@ class UserRepository {
     return this.userRepo.update({ id }, updateData)
   }
 
+  static getUserWithPassword(id: string) {
+    return this.userRepo.createQueryBuilder('user').addSelect('user.password').where('user.id = :id', { id }).getOne()
+  }
+
+  static updateUserPassword(id: string, newPassword: string) {
+    return this.userRepo.update({ id }, { password: newPassword })
+  }
+
+  static softDeleteUser(id: string) {
+    return this.userRepo.softDelete({ id })
+  }
+
   private static get userRepo() {
     return AppDataSource.getDataSource().getRepository(User)
   }
