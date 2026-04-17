@@ -1,8 +1,11 @@
-import AppDataSource from '@databases/data-source'
+import { Brackets, In } from 'typeorm'
+
 import { RefreshToken } from '@entities/refresh-token.entity'
 import { User } from '@entities/user.entity'
-import { RegisterBody } from '@modules/auth/dto'
-import { Brackets, In } from 'typeorm'
+
+import AppDataSource from '@databases/data-source'
+
+import { RegisterBody } from './dto'
 
 class AuthRepository {
   private static get userRepo() {

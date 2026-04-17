@@ -1,5 +1,6 @@
-import { passwordSchema } from '@common/validators'
 import { z } from 'zod/v4'
+
+import { passwordSchema } from '@common/validators'
 
 export const RegisterBodySchema = z
   .object({

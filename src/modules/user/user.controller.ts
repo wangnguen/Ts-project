@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
-import UserService from '@modules/user/user.service'
+
 import { UpdateUserBody, UpdateUserPasswordBody } from './dto'
+import UserService from './user.service'
 
 class UserController {
   static async getUserInfo(req: Request, res: Response) {

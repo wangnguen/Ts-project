@@ -1,7 +1,9 @@
 import { Router } from 'express'
-import UserController from './user.controller'
+
 import { validateBody } from '@common/middlewares'
+
 import { UpdateUserBodySchema, UpdateUserPasswordBodySchema } from './dto'
+import UserController from './user.controller'
 
 const router = Router()
 

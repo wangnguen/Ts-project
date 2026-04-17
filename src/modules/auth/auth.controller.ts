@@ -1,7 +1,9 @@
-import env from '@common/config/env'
-import AuthService from '@modules/auth/auth.service'
-import { LoginBody, RegisterBody } from '@modules/auth/dto'
 import { Request, Response } from 'express'
+
+import env from '@common/config/env'
+
+import AuthService from './auth.service'
+import { LoginBody, RegisterBody } from './dto'
 
 class AuthController {
   static async login(req: Request, res: Response) {

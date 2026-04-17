@@ -1,12 +1,14 @@
-import { env } from '@common/config'
-import { SALT_ROUNDS } from '@common/constants'
-import { ConflictError, UnauthorizedError } from '@common/errors/app.error'
-import { JWTService } from '@common/services'
-import { AuthResponse, AuthUser } from '@common/types'
-import AuthRepository from '@modules/auth/auth.repository'
-import { LoginBody, RegisterBody } from '@modules/auth/dto'
 import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
+
+import { env } from '@common/config'
+import { SALT_ROUNDS } from '@common/constants'
+import { ConflictError, UnauthorizedError } from '@common/errors'
+import { JWTService } from '@common/services'
+import { AuthResponse, AuthUser } from '@common/types'
+
+import AuthRepository from './auth.repository'
+import { LoginBody, RegisterBody } from './dto'
 
 class AuthService {
   static async login(dto: LoginBody): Promise<AuthResponse> {

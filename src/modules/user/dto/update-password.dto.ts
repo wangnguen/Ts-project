@@ -1,8 +1,16 @@
 import { z } from 'zod/v4'
 
-export const UpdateUserPasswordBodySchema = z.object({
-  currentPassword: z.string().min(6).max(100),
-  newPassword: z.string().min(6).max(100)
-})
+import { passwordSchema } from '@common/validators'
 
-export type UpdateUserPasswordBody = z.infer<typeof UpdateUserPasswordBodySchema>
+export const UpdateUserPasswordBodySchema = z
+  .object({
+    currentPassword: passwordSchema,
+    newPassword: passwordSchema,
+    confirmPassword: z.string()
+  })
+  .refine((data) => data.confirmPassword === data.newPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword']
+  })
+
+export type UpdateUserPasswordBody = Omit<z.infer<typeof UpdateUserPasswordBodySchema>, 'confirmPassword'>

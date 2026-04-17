@@ -1,6 +1,8 @@
 import express from 'express'
+
 import { applyAppMiddlewares, applySecurityMiddlewares } from '@common/config/app-middleware'
 import { ErrorMiddleware } from '@common/middlewares'
+
 import moduleRoutes from '@modules/index'
 
 const app: express.Application = express()

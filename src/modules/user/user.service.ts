@@ -1,11 +1,11 @@
 import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
 
-import { ConflictError, NotFoundError } from '@common/errors'
 import { SALT_ROUNDS } from '@common/constants'
+import { ConflictError, NotFoundError, UnauthorizedError } from '@common/errors'
 
 import { UpdateUserBody, UpdateUserPasswordBody } from './dto'
-import UserRepository from '@modules/user/user.repository'
+import UserRepository from './user.repository'
 
 class UserService {
   static async getUserInfo(id: string) {
@@ -48,19 +48,17 @@ class UserService {
 
     const isCurrentPasswordValid = await this.comparePassword(dto.currentPassword, user.password)
     if (!isCurrentPasswordValid) {
-      throw new ConflictError('Current password is incorrect')
+      throw new UnauthorizedError('Current password is incorrect')
     }
     const newPasswordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS)
     await UserRepository.updateUserPassword(id, newPasswordHash)
   }
 
   static async deleteUser(id: string) {
-    const user = await UserRepository.getUserById(id)
-    if (!user) {
+    const result = await UserRepository.softDeleteUser(id)
+    if (!result.affected) {
       throw new NotFoundError('User not found')
     }
-
-    await UserRepository.softDeleteUser(id)
   }
 
   private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {

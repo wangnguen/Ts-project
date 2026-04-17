@@ -1,5 +1,6 @@
-import AppDataSource from '@databases/data-source'
 import { User } from '@entities/user.entity'
+
+import AppDataSource from '@databases/data-source'
 
 class UserRepository {
   static getUserById(id: string) {

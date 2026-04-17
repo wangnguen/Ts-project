@@ -1,8 +1,9 @@
-import express from 'express'
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import express from 'express'
 import helmet from 'helmet'
+
 import env from '@common/config/env'
 import { globalRateLimiterMiddleware, ResponseMiddleware } from '@common/middlewares'
 

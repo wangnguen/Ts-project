@@ -1,6 +1,7 @@
-import { ForbiddenError, UnauthorizedError } from '@common/errors/app.error'
-import { JWTService } from '@common/services'
 import { NextFunction, Request, Response } from 'express'
+
+import { ForbiddenError, UnauthorizedError } from '@common/errors'
+import { JWTService } from '@common/services'
 
 class AuthMiddleware {
   static authenticate(req: Request, _res: Response, next: NextFunction) {

@@ -1,7 +1,9 @@
 import { Router } from 'express'
+
+import AuthenticateMiddleware from '@common/middlewares/auth.middleware'
+
 import AuthRoute from '@modules/auth/auth.route'
 import HealthRoute from '@modules/health/health.route'
-import AuthenticateMiddleware from '@common/middlewares/auth.middleware'
 import UserRoute from '@modules/user/user.route'
 
 const router = Router()

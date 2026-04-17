@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod/v4'
-import { ValidationError } from '@common/errors/app.error'
-import { ValidationErrorItem } from '@common/types/response.type'
+
+import { ValidationError } from '@common/errors/'
+import { ValidationErrorItem } from '@common/types/'
 
 function createValidator(source: 'body' | 'params' | 'query') {
   return (schema: z.ZodType) => {

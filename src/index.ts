@@ -1,7 +1,9 @@
 import 'dotenv/config'
 import env from '@common/config/env'
 import logger from '@common/config/logger'
+
 import AppDataSource from '@databases/data-source'
+
 import app from './app'
 
 const bootstrap = async () => {

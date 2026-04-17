@@ -1,7 +1,9 @@
+import { createHmac } from 'node:crypto'
+
+import jwt from 'jsonwebtoken'
+
 import env from '@common/config/env'
 import { AccessTokenPayload, RefreshTokenPayload } from '@common/types'
-import jwt from 'jsonwebtoken'
-import { createHmac } from 'node:crypto'
 
 class TokenService {
   static generateAccessToken(payload: AccessTokenPayload): string {

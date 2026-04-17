@@ -1,8 +1,9 @@
+import { instanceToPlain } from 'class-transformer'
 import { Request, Response, NextFunction } from 'express'
 import { ReasonPhrases, StatusCodes } from 'http-status-codes'
-import { ApiErrorResponse, ApiSuccessResponse } from '@common/models/api-response.model'
+
+import { ApiErrorResponse, ApiSuccessResponse } from '@common/models/'
 import { ErrorPayload, SuccessData, SuccessPayload } from '@common/types'
-import { instanceToPlain } from 'class-transformer'
 
 class ResponseMiddleware {
   static extendResponse = (_req: Request, res: Response, next: NextFunction) => {

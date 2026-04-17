@@ -1,9 +1,11 @@
-import env from '@common/config/env'
-import logger from '@common/config/logger'
 import path from 'node:path'
+
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies'
+
+import env from '@common/config/env'
+import logger from '@common/config/logger'
 
 class AppDataSource {
   private static instance: DataSource

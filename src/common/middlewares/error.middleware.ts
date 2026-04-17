@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from 'express'
 import { ReasonPhrases } from 'http-status-codes'
-import { AppError, ValidationError } from '@common/errors/app.error'
+
 import env from '@common/config/env'
 import logger from '@common/config/logger'
+import { AppError, ValidationError } from '@common/errors'
 
 class ErrorMiddleware {
   static notFound(req: Request, res: Response) {

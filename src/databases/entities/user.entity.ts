@@ -1,7 +1,9 @@
-import { Entity, Column } from 'typeorm'
-import { BaseEntity } from './base.entity'
-import { USER_ROLE, UserRole } from '@common/constants'
 import { Exclude } from 'class-transformer'
+import { Entity, Column } from 'typeorm'
+
+import { USER_ROLE, UserRole } from '@common/constants'
+
+import { BaseEntity } from './base.entity'
 
 @Entity('users')
 export class User extends BaseEntity {

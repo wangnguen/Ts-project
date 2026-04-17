@@ -1,5 +1,6 @@
-import { ResponseType } from '@common/types/index'
 import { Response as ExpressResponse } from 'express'
+
+import { ResponseType } from '@common/types/index'
 
 type SuccessPayload = ResponseType.SuccessPayload
 type ErrorPayload = ResponseType.ErrorPayload

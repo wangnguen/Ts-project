@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+
 import HealthService from './health.service'
 
 class HealthController {
