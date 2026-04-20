@@ -1,66 +1,59 @@
 import { Request, Response } from 'express'
 
-import env from '@common/config/env'
+import GoogleService from '@common/services/google-auth.service'
 
 import AuthService from './auth.service'
-import { LoginBody, RegisterBody } from './dto'
+import { GoogleCallbackBody, LoginBody, RegisterBody, RefreshTokenBody } from './dto'
 
 class AuthController {
   static async login(req: Request, res: Response) {
     const body = req.body as LoginBody
     const { accessToken, refreshToken, user } = await AuthService.login(body)
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: env.JWT_REFRESH_EXPIRES_IN * 1000
-    })
 
-    res.ok({ accessToken, user }, { message: 'Login successful' })
+    return res.ok({ accessToken, refreshToken, user }, { message: 'Login successful' })
   }
 
   static async register(req: Request, res: Response) {
     const body = req.body as RegisterBody
     const user = await AuthService.register(body)
 
-    res.created({ user }, { message: 'Registration successful' })
+    return res.created({ user }, { message: 'Registration successful' })
   }
 
   static async logout(req: Request, res: Response) {
-    const refreshToken = req.cookies.refreshToken
+    const { refreshToken } = req.body as RefreshTokenBody
     await AuthService.logout(refreshToken)
-    res.clearCookie('refreshToken')
 
-    res.ok(null, { message: 'Logout successful' })
+    return res.ok(null, { message: 'Logout successful' })
   }
 
   static async refreshToken(req: Request, res: Response) {
     const userId = req.refreshUserId as string
-    const refreshToken = req.cookies.refreshToken
-    const { accessToken, refreshToken: newRefreshToken } = await AuthService.refreshToken(refreshToken, userId)
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: env.JWT_REFRESH_EXPIRES_IN * 1000
-    })
+    const oldRefreshToken = req.body.refreshToken
+    const { accessToken, refreshToken: newRefreshToken } = await AuthService.refreshToken(oldRefreshToken, userId)
 
-    res.ok({ accessToken }, { message: 'Token refreshed successfully' })
+    return res.ok({ accessToken, refreshToken: newRefreshToken }, { message: 'Token refreshed successfully' })
   }
 
-  static async googleCallback(req: Request, res: Response) {
-    if (!req.profileGoogle) {
-      throw new Error('Missing Google profile')
-    }
-    const { accessToken, refreshToken, user } = await AuthService.handleGoogleCallback(req.profileGoogle)
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: env.JWT_REFRESH_EXPIRES_IN * 1000
+  static async getGoogleRedirectUrl(req: Request, res: Response) {
+    const url = AuthService.createGoogleAuthUrl()
+
+    return res.ok({ url }, { message: 'Google OAuth URL generated successfully' })
+  }
+
+  static async verifyGoogleCallback(req: Request, res: Response) {
+    const body = req.body as GoogleCallbackBody
+
+    const { email, fullName, googleId, avatarUrl } = await GoogleService.getProfileFromAuthCode(body.code)
+
+    const { accessToken, refreshToken, user } = await AuthService.verifyGoogleCallback({
+      email,
+      fullName,
+      googleId,
+      avatarUrl
     })
 
-    res.ok({ accessToken, user }, { message: 'Google authentication successful' })
+    return res.ok({ accessToken, refreshToken, user }, { message: 'Google authentication successful' })
   }
 }
 

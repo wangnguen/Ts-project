@@ -8,11 +8,11 @@ import { BaseEntity } from './base.entity'
 @Entity('users')
 export class User extends BaseEntity {
   @Column({ type: 'varchar', unique: true, length: 30, nullable: true })
-  username!: string | null
+  username?: string | null
 
   @Exclude({ toPlainOnly: true })
   @Column({ type: 'varchar', select: false, length: 72, nullable: true })
-  password!: string | null
+  password?: string | null
 
   @Column({ unique: true, length: 255 })
   email: string
@@ -29,8 +29,8 @@ export class User extends BaseEntity {
 
   @Exclude({ toPlainOnly: true })
   @Column({ type: 'varchar', nullable: true, length: 255 })
-  googleId!: string | null
+  googleId?: string
 
   @Column({ type: 'text', nullable: true })
-  avatarUrl: string | null
+  avatarUrl?: string | null
 }

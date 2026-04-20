@@ -1,5 +1,3 @@
-import { Brackets, In } from 'typeorm'
-
 import { RefreshToken } from '@entities/refresh-token.entity'
 import { User } from '@entities/user.entity'
 
@@ -16,7 +14,7 @@ class AuthRepository {
     return AppDataSource.getDataSource().getRepository(RefreshToken)
   }
 
-  static create(user: Omit<RegisterBody, 'confirmPassword'>) {
+  static createUser(user: Omit<RegisterBody, 'confirmPassword'>) {
     const newUser = this.userRepo.create(user)
     return this.userRepo.save(newUser)
   }
@@ -61,35 +59,18 @@ class AuthRepository {
   }
 
   static findRefreshToken(tokenHash: string) {
-    const tokenCandidates = [tokenHash]
-    return this.refreshTokenRepo.findOne({ where: { token: In(tokenCandidates) } })
+    return this.refreshTokenRepo.findOne({ where: { token: tokenHash } })
   }
 
   static deleteRefreshToken(tokenHash: string) {
-    const tokenCandidates = [tokenHash]
-    return this.refreshTokenRepo.delete({ token: In(tokenCandidates) })
+    return this.refreshTokenRepo.delete({ token: tokenHash })
   }
 
   static deleteRefreshTokenById(id: string) {
     return this.refreshTokenRepo.delete({ id })
   }
 
-  static deleteExpiredTokensForUser(userId: string) {
-    return this.refreshTokenRepo
-      .createQueryBuilder()
-      .delete()
-      .where('user_id = :userId', { userId })
-      .andWhere(new Brackets((qb) => qb.where('expires_at < :now').orWhere('absolute_expires_at < :now')), {
-        now: new Date()
-      })
-      .execute()
-  }
-
-  static findByGoogleId(googleId: string) {
-    return this.userRepo.findOne({ where: { googleId } })
-  }
-
-  static updateGoogleLink(id: string, data: { googleId: string; avatarUrl?: string | null }) {
+  static updateGoogleProfile(id: string, data: { googleId: string; avatarUrl?: string }) {
     return this.userRepo.update(id, data)
   }
 }

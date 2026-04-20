@@ -7,11 +7,11 @@ export type AuthTokens = {
 
 export type AuthUser = {
   id: string
-  username: string | null
+  username?: string | null
   email: string
   fullName: string
   role: UserRole
-  avatarUrl: string | null
+  avatarUrl?: string | null
 }
 
 export type AuthResponse = AuthTokens & {
@@ -44,5 +44,5 @@ export type GoogleProfile = {
   googleId: string
   email: string
   fullName: string
-  avatarUrl?: string
+  avatarUrl?: string | null
 }

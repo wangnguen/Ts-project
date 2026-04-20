@@ -2,49 +2,31 @@ import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
 
 import { env } from '@common/config'
-import { SALT_ROUNDS } from '@common/constants'
+import { GOOGLE_AUTH, SALT_ROUNDS } from '@common/constants'
 import { ConflictError, UnauthorizedError } from '@common/errors'
 import { JWTService } from '@common/services'
 import { AuthResponse, AuthUser, GoogleProfile } from '@common/types'
+
+import { User } from '@entities/user.entity'
 
 import AuthRepository from './auth.repository'
 import { LoginBody, RegisterBody } from './dto'
 
 class AuthService {
   static async login(dto: LoginBody): Promise<AuthResponse> {
-    const existUser = await AuthRepository.findByEmailWithPassword(dto.email)
-    if (!existUser || !existUser.password) {
+    const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
+    if (!existingUser || !existingUser.password) {
       throw new UnauthorizedError('User or password is invalid')
     }
 
-    const isPasswordValid: boolean = await AuthService.comparePassword(dto.password, existUser.password)
+    const isPasswordValid: boolean = await AuthService.comparePassword(dto.password, existingUser.password)
     if (!isPasswordValid) {
       throw new UnauthorizedError('User or password is invalid')
     }
 
-    const accessToken = JWTService.generateAccessToken({
-      sub: existUser.id,
-      email: existUser.email,
-      role: existUser.role
-    })
+    const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
 
-    const refreshToken = JWTService.generateRefreshToken({
-      sub: existUser.id
-    })
-    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
-
-    await Promise.all([
-      AuthRepository.saveRefreshToken({
-        tokenHash: refreshTokenHash,
-        userId: existUser.id,
-        expiresAt: new Date(Date.now() + Number(env.JWT_REFRESH_EXPIRES_IN) * 1000),
-        absoluteExpiresAt: new Date(Date.now() + Number(env.MAX_SESSION_LIFETIME_IN) * 1000)
-      }),
-      AuthRepository.updateLastLogin(existUser.id),
-      AuthRepository.deleteExpiredTokensForUser(existUser.id)
-    ])
-
-    const user = instanceToPlain(existUser) as AuthUser
+    const user = instanceToPlain(existingUser) as AuthUser
 
     return { accessToken, refreshToken, user }
   }
@@ -64,24 +46,23 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS)
-    const newUser = await AuthRepository.create({ ...dto, password: hashedPassword })
+    const newUser = await AuthRepository.createUser({ ...dto, password: hashedPassword })
 
     const user = instanceToPlain(newUser) as AuthUser
 
     return user
   }
 
-  static async logout(refreshToken?: string): Promise<void> {
-    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken as string)
+  static async logout(refreshToken: string): Promise<void> {
+    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
     await AuthRepository.deleteRefreshToken(refreshTokenHash)
   }
 
   static async refreshToken(
-    refreshToken: string,
+    currentRefreshToken: string,
     userId: string
   ): Promise<Pick<AuthResponse, 'accessToken' | 'refreshToken'>> {
-    const payload = { sub: userId }
-    const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
+    const refreshTokenHash = JWTService.hashRefreshToken(currentRefreshToken)
     const storedToken = await AuthRepository.findRefreshToken(refreshTokenHash)
     if (!storedToken || storedToken.expiresAt < new Date()) {
       throw new UnauthorizedError('Invalid or expired refresh token')
@@ -93,7 +74,7 @@ class AuthService {
 
     await AuthRepository.deleteRefreshTokenById(storedToken.id)
 
-    const user = await AuthRepository.findById(payload.sub)
+    const user = await AuthRepository.findById(userId)
     if (!user) throw new UnauthorizedError('User not found')
 
     const accessToken = JWTService.generateAccessToken({ sub: user.id, email: user.email, role: user.role })
@@ -110,48 +91,58 @@ class AuthService {
     return { accessToken, refreshToken: newRefreshToken }
   }
 
-  static async handleGoogleCallback(googleProfile: GoogleProfile): Promise<AuthResponse> {
-    let user = await AuthRepository.findByGoogleId(googleProfile.googleId)
+  static createGoogleAuthUrl(): string {
+    const params = new URLSearchParams({
+      client_id: env.GOOGLE_CLIENT_ID,
+      redirect_uri: env.GOOGLE_CALLBACK_URL,
+      response_type: 'code',
+      scope: GOOGLE_AUTH.SCOPE,
+      prompt: 'select_account'
+    })
+    return `${GOOGLE_AUTH.URL}?${params.toString()}`
+  }
 
-    if (!user) {
-      user = await AuthRepository.findByEmail(googleProfile.email)
+  static async verifyGoogleCallback(profile: GoogleProfile): Promise<AuthResponse> {
+    const existingUser = await AuthRepository.findByEmail(profile.email)
 
-      if (user) {
-        const avatarUrl = googleProfile.avatarUrl ?? user.avatarUrl ?? null
-        await AuthRepository.updateGoogleLink(user.id, {
-          googleId: googleProfile.googleId,
-          avatarUrl
-        })
-        user.googleId = googleProfile.googleId
-        user.avatarUrl = avatarUrl
-      } else {
-        try {
-          user = await AuthRepository.createOAuthUser({
-            email: googleProfile.email,
-            fullName: googleProfile.fullName,
-            googleId: googleProfile.googleId,
-            avatarUrl: googleProfile.avatarUrl ?? null
-          })
-        } catch {
-          user = await AuthRepository.findByEmail(googleProfile.email)
-          if (!user) throw new ConflictError('Failed to create user account')
-          await AuthRepository.updateGoogleLink(user.id, {
-            googleId: googleProfile.googleId,
-            avatarUrl: googleProfile.avatarUrl ?? user.avatarUrl ?? null
-          })
-          user.googleId = googleProfile.googleId
-          user.avatarUrl = googleProfile.avatarUrl ?? user.avatarUrl ?? null
-        }
-      }
+    if (existingUser) {
+      await AuthRepository.updateGoogleProfile(existingUser.id, {
+        googleId: profile.googleId,
+        avatarUrl: profile.avatarUrl ?? undefined
+      })
+      const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
+      const user = instanceToPlain(existingUser) as AuthUser
+      return { accessToken, refreshToken, user }
     }
 
+    const newUser = await AuthRepository.createOAuthUser({
+      email: profile.email,
+      fullName: profile.fullName,
+      googleId: profile.googleId,
+      avatarUrl: profile.avatarUrl
+    })
+
+    const { accessToken, refreshToken } = await AuthService.generateTokens(newUser)
+
+    const user = instanceToPlain(newUser) as AuthUser
+
+    return { accessToken, refreshToken, user }
+  }
+
+  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword)
+  }
+
+  private static async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = JWTService.generateAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role
     })
 
-    const refreshToken = JWTService.generateRefreshToken({ sub: user.id })
+    const refreshToken = JWTService.generateRefreshToken({
+      sub: user.id
+    })
     const refreshTokenHash = JWTService.hashRefreshToken(refreshToken)
 
     await Promise.all([
@@ -161,17 +152,9 @@ class AuthService {
         expiresAt: new Date(Date.now() + Number(env.JWT_REFRESH_EXPIRES_IN) * 1000),
         absoluteExpiresAt: new Date(Date.now() + Number(env.MAX_SESSION_LIFETIME_IN) * 1000)
       }),
-      AuthRepository.updateLastLogin(user.id),
-      AuthRepository.deleteExpiredTokensForUser(user.id)
+      AuthRepository.updateLastLogin(user.id)
     ])
-
-    const plainUser = instanceToPlain(user) as AuthUser
-
-    return { accessToken, refreshToken, user: plainUser }
-  }
-
-  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
+    return { accessToken, refreshToken }
   }
 }
 
