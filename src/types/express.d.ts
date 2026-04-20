@@ -1,6 +1,6 @@
 import { Response as ExpressResponse } from 'express'
 
-import { ResponseType } from '@common/types/index'
+import { GoogleProfile, ResponseType } from '@common/types/index'
 
 type SuccessPayload = ResponseType.SuccessPayload
 type ErrorPayload = ResponseType.ErrorPayload
@@ -13,6 +13,7 @@ declare global {
         role: string
       }
       refreshUserId?: string
+      profileGoogle?: GoogleProfile
     }
     interface Response {
       ok<T>(data: T, payload?: SuccessPayload): ExpressResponse

@@ -21,6 +21,11 @@ class AuthRepository {
     return this.userRepo.save(newUser)
   }
 
+  static createOAuthUser(data: { email: string; fullName: string; googleId: string; avatarUrl?: string | null }) {
+    const newUser = this.userRepo.create(data)
+    return this.userRepo.save(newUser)
+  }
+
   static findByUsername(username: string) {
     return this.userRepo.findOne({ where: { username } })
   }
@@ -78,6 +83,14 @@ class AuthRepository {
         now: new Date()
       })
       .execute()
+  }
+
+  static findByGoogleId(googleId: string) {
+    return this.userRepo.findOne({ where: { googleId } })
+  }
+
+  static updateGoogleLink(id: string, data: { googleId: string; avatarUrl?: string | null }) {
+    return this.userRepo.update(id, data)
   }
 }
 

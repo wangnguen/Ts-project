@@ -46,6 +46,10 @@ class UserService {
       throw new NotFoundError('User not found')
     }
 
+    if (!user.password) {
+      throw new UnauthorizedError('Account does not have a password set')
+    }
+
     const isCurrentPasswordValid = await this.comparePassword(dto.currentPassword, user.password)
     if (!isCurrentPasswordValid) {
       throw new UnauthorizedError('Current password is incorrect')

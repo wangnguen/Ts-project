@@ -7,12 +7,12 @@ import { BaseEntity } from './base.entity'
 
 @Entity('users')
 export class User extends BaseEntity {
-  @Column({ unique: true, length: 30 })
-  username: string
+  @Column({ type: 'varchar', unique: true, length: 30, nullable: true })
+  username!: string | null
 
   @Exclude({ toPlainOnly: true })
-  @Column({ select: false, length: 72 })
-  password: string
+  @Column({ type: 'varchar', select: false, length: 72, nullable: true })
+  password!: string | null
 
   @Column({ unique: true, length: 255 })
   email: string
@@ -26,4 +26,11 @@ export class User extends BaseEntity {
   @Exclude({ toPlainOnly: true })
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date | null
+
+  @Exclude({ toPlainOnly: true })
+  @Column({ type: 'varchar', nullable: true, length: 255 })
+  googleId!: string | null
+
+  @Column({ type: 'text', nullable: true })
+  avatarUrl: string | null
 }

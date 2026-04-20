@@ -7,11 +7,11 @@ export type AuthTokens = {
 
 export type AuthUser = {
   id: string
-  username: string
+  username: string | null
   email: string
   fullName: string
   role: UserRole
-  isVerified: boolean
+  avatarUrl: string | null
 }
 
 export type AuthResponse = AuthTokens & {
@@ -26,4 +26,23 @@ export type AccessTokenPayload = {
 
 export type RefreshTokenPayload = {
   sub: string
+}
+
+export type GoogleTokenResponse = {
+  access_token: string
+  token_type: string
+}
+
+export type GoogleUserInfo = {
+  id: string
+  email: string
+  name: string
+  picture?: string
+}
+
+export type GoogleProfile = {
+  googleId: string
+  email: string
+  fullName: string
+  avatarUrl?: string
 }

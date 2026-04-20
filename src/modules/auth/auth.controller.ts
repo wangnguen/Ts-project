@@ -47,6 +47,21 @@ class AuthController {
 
     res.ok({ accessToken }, { message: 'Token refreshed successfully' })
   }
+
+  static async googleCallback(req: Request, res: Response) {
+    if (!req.profileGoogle) {
+      throw new Error('Missing Google profile')
+    }
+    const { accessToken, refreshToken, user } = await AuthService.handleGoogleCallback(req.profileGoogle)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: env.JWT_REFRESH_EXPIRES_IN * 1000
+    })
+
+    res.ok({ accessToken, user }, { message: 'Google authentication successful' })
+  }
 }
 
 export default AuthController
