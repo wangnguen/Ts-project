@@ -44,6 +44,16 @@ class AuthController {
   static async verifyGoogleCallback(req: Request, res: Response) {
     const body = req.body as GoogleCallbackBody
 
+    return AuthController.handleGoogleCallback(body, res)
+  }
+
+  static async verifyGoogleCallbackQuery(req: Request, res: Response) {
+    const query = req.query as GoogleCallbackBody
+
+    return AuthController.handleGoogleCallback(query, res)
+  }
+
+  private static async handleGoogleCallback(body: GoogleCallbackBody, res: Response) {
     AuthService.verifyOAuthState(body.state)
 
     const { email, fullName, googleId, avatarUrl } = await GoogleService.getProfileFromAuthCode(body.code)

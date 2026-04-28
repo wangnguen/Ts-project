@@ -1,15 +1,19 @@
 import { rateLimit } from 'express-rate-limit'
 
+import { RATE_LIMIT_MAX_REQUESTS_AUTH, RATE_LIMIT_MAX_REQUESTS_GLOBAL, RATE_LIMIT_WINDOW_MS } from '@common/constants'
+
+const isProduction = process.env.NODE_ENV === 'production'
+
 export const globalRateLimiterMiddleware = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: isProduction ? RATE_LIMIT_MAX_REQUESTS_GLOBAL : 10000,
   standardHeaders: 'draft-8',
   legacyHeaders: false
 })
 
 export const authRateLimiterMiddleware = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: isProduction ? RATE_LIMIT_MAX_REQUESTS_AUTH : 10000,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }

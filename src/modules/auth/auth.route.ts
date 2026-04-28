@@ -1,6 +1,6 @@
 import { Router } from 'express'
 
-import { AuthMiddleware, authRateLimiterMiddleware, validateBody } from '@common/middlewares'
+import { AuthMiddleware, authRateLimiterMiddleware, validateBody, validateQuery } from '@common/middlewares'
 
 import AuthController from './auth.controller'
 import { LoginBodySchema, RegisterBodySchema, RefreshTokenBodySchema, GoogleCallbackBodySchema } from './dto'
@@ -23,6 +23,12 @@ router.post(
 )
 
 router.get('/google', authRateLimiterMiddleware, AuthController.getGoogleRedirectUrl)
+router.get(
+  '/google/callback',
+  authRateLimiterMiddleware,
+  validateQuery(GoogleCallbackBodySchema),
+  AuthController.verifyGoogleCallbackQuery
+)
 router.post(
   '/google/callback',
   authRateLimiterMiddleware,
