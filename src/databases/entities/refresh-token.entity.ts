@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm'
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm'
 
 import { BaseEntity } from './base.entity'
 import { User } from './user.entity'
@@ -8,6 +8,7 @@ export class RefreshToken extends BaseEntity {
   @Column({ unique: true, type: 'text' })
   token: string
 
+  @Index('IDX_refresh_tokens_user_id')
   @Column({ type: 'uuid' })
   userId: string
 

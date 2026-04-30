@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>OAuth2 Test</h1>
+
+    <button onclick="login()">Login with OAuth2</button>
+
+    <pre id="result"></pre>
+
+    <script>
+      async function login() {
+        const res = await fetch('http://localhost:8080/api/v1/auth/google', {
+          method: 'GET'
+        })
+
+        const data = await res.json()
+
+        console.log('BE response:', data)
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2)
+
+        const authUrl = data.data.url
+
+        if (!authUrl) {
+          alert('Không tìm thấy auth URL trong response. Xem console/log.')
+          return
+        }
+        window.location.href = data.data.url
+      }
+    </script>
+  </body>
+</html>

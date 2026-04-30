@@ -22,7 +22,10 @@ const envSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(30 * 24 * 60 * 60)
+    .default(30 * 24 * 60 * 60),
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  GOOGLE_CALLBACK_URL: z.url().default('http://localhost:8080/api/v1/auth/google/callback')
 })
 
 export type EnvSchema = z.infer<typeof envSchema>

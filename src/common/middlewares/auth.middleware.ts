@@ -27,7 +27,7 @@ class AuthMiddleware {
   }
 
   static authenticateRefreshToken(req: Request, _res: Response, next: NextFunction) {
-    const refreshToken = req.cookies?.refreshToken
+    const refreshToken = req.body.refreshToken
     if (!refreshToken) return next(new UnauthorizedError('Invalid or expired refresh token'))
 
     try {

@@ -18,7 +18,9 @@ function createValidator(source: 'body' | 'params' | 'query') {
         return next(new ValidationError(errors))
       }
 
-      req[source] = result.data
+      if (source !== 'query') {
+        req[source] = result.data
+      }
       next()
     }
   }
