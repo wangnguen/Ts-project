@@ -34,7 +34,4 @@ export class User extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   avatarUrl?: string | null
-
-  @Column({ type: 'boolean', default: false })
-  isEmailVerified: boolean
 }
