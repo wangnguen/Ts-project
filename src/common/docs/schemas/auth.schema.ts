@@ -3,13 +3,10 @@ import { z } from 'zod/v4'
 import { registry } from '@common/docs/registry'
 
 import {
-  ForgotPasswordBodySchema,
   GoogleCallbackBodySchema,
   LoginBodySchema,
   RefreshTokenBodySchema,
-  RegisterBodySchema,
-  ResetPasswordBodySchema,
-  VerifyEmailBodySchema
+  RegisterBodySchema
 } from '@modules/auth/dto'
 
 import { errorResponse, successWrapper } from './shared'
@@ -249,114 +246,5 @@ registry.registerPath({
       }
     },
     400: errorResponse(400, 'Invalid code or state', 'Bad Request')
-  }
-})
-
-registry.registerPath({
-  method: 'post',
-  path: '/auth/forgot-password',
-  tags: ['Auth - Email'],
-  summary: 'Request a password reset email',
-  description:
-    'Sends a 6-digit OTP code to the provided email address. Always returns 200 regardless of whether the email exists (privacy protection). Rate limited.',
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: ForgotPasswordBodySchema.openapi({
-            example: { email: 'john@example.com' }
-          })
-        }
-      }
-    }
-  },
-  responses: {
-    200: {
-      description: 'Reset email sent (or silently skipped if email not found)',
-      content: {
-        'application/json': {
-          schema: successWrapper(z.null(), '/auth/forgot-password')
-        }
-      }
-    },
-    400: errorResponse(400, 'Validation error', 'Validation failed'),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
-  }
-})
-
-registry.registerPath({
-  method: 'post',
-  path: '/auth/reset-password',
-  tags: ['Auth - Email'],
-  summary: 'Reset password using OTP code from email',
-  description:
-    "Completes the password reset flow. Requires a valid access token in the Authorization header and the 6-digit OTP sent to the user's email.",
-  security: [{ bearerAuth: [] }],
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: ResetPasswordBodySchema.openapi({
-            example: {
-              token: '123456',
-              password: 'NewP@ssword1!',
-              confirmPassword: 'NewP@ssword1!'
-            }
-          })
-        }
-      }
-    }
-  },
-  responses: {
-    200: {
-      description: 'Password reset successfully',
-      content: {
-        'application/json': {
-          schema: successWrapper(z.null(), '/auth/reset-password')
-        }
-      }
-    },
-    400: errorResponse(400, 'Validation error or passwords do not match', 'Validation failed'),
-    401: errorResponse(401, 'Invalid or expired refresh token', 'Unauthorized'),
-    410: errorResponse(410, 'OTP token has expired or already been used', 'Gone'),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
-  }
-})
-
-registry.registerPath({
-  method: 'post',
-  path: '/auth/verify-email',
-  tags: ['Auth - Email'],
-  summary: 'Verify email address using OTP token',
-  description:
-    "Confirms the user's email address. Requires a valid access token in the Authorization header and the 6-digit OTP sent during registration.",
-  security: [{ bearerAuth: [] }],
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: VerifyEmailBodySchema.openapi({
-            example: { token: '654321' }
-          })
-        }
-      }
-    }
-  },
-  responses: {
-    200: {
-      description: 'Email verified successfully',
-      content: {
-        'application/json': {
-          schema: successWrapper(z.null(), '/auth/verify-email')
-        }
-      }
-    },
-    400: errorResponse(400, 'Validation error', 'Validation failed'),
-    401: errorResponse(401, 'Invalid or expired refresh token', 'Unauthorized'),
-    410: errorResponse(410, 'Verification token has expired or already been used', 'Gone'),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
   }
 })
