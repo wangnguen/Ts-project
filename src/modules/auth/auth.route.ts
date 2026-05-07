@@ -53,16 +53,9 @@ router.post(
 router.post(
   '/reset-password',
   authRateLimiterMiddleware,
-  AuthMiddleware.authenticate,
   validateBody(ResetPasswordBodySchema),
   AuthController.resetPassword
 )
-router.post(
-  '/verify-email',
-  authRateLimiterMiddleware,
-  AuthMiddleware.authenticate,
-  validateBody(VerifyEmailBodySchema),
-  AuthController.verifyEmail
-)
+router.post('/verify-email', authRateLimiterMiddleware, validateBody(VerifyEmailBodySchema), AuthController.verifyEmail)
 
 export default router

@@ -179,8 +179,8 @@ class AuthService {
   }
 
   static async forgotPassword(email: string): Promise<void> {
-    const user = await AuthRepository.findByEmail(email)
-    if (!user) return
+    const user = await AuthRepository.findByEmailWithPassword(email)
+    if (!user || !user.password || !user.isEmailVerified) return
 
     const otp = generateRandomDigits(6)
     const expiresAt = new Date(Date.now() + RESET_PASSWORD_EXPIRE_MINUTES * 60 * 1000)

@@ -17,7 +17,7 @@ class AuthRepository {
   }
 
   static createOAuthUser(data: { email: string; fullName: string; googleId: string; avatarUrl?: string | null }) {
-    const newUser = this.userRepo.create(data)
+    const newUser = this.userRepo.create({ ...data, isEmailVerified: true })
     return this.userRepo.save(newUser)
   }
 
