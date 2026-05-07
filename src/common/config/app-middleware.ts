@@ -10,7 +10,7 @@ import { globalRateLimiterMiddleware, ResponseMiddleware } from '@common/middlew
 export function applySecurityMiddlewares(app: express.Application): void {
   app.use(
     cors({
-      origin: env.CLIENT_URL,
+      origin: env.CLIENT_URL.split(',').map((url) => url.trim()),
       credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization'],
       exposedHeaders: ['X-Request-Id']
