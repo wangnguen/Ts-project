@@ -1,3 +1,8 @@
+import { IsNull, MoreThan } from 'typeorm'
+
+import { AuthTokenType } from '@common/constants'
+
+import { AuthToken } from '@entities/auth-token.entity'
 import { RefreshToken } from '@entities/refresh-token.entity'
 import { User } from '@entities/user.entity'
 
@@ -6,21 +11,13 @@ import AppDataSource from '@databases/data-source'
 import { RegisterBody } from './dto'
 
 class AuthRepository {
-  private static get userRepo() {
-    return AppDataSource.getDataSource().getRepository(User)
-  }
-
-  private static get refreshTokenRepo() {
-    return AppDataSource.getDataSource().getRepository(RefreshToken)
-  }
-
   static createUser(user: Omit<RegisterBody, 'confirmPassword'>) {
     const newUser = this.userRepo.create(user)
     return this.userRepo.save(newUser)
   }
 
   static createOAuthUser(data: { email: string; fullName: string; googleId: string; avatarUrl?: string | null }) {
-    const newUser = this.userRepo.create(data)
+    const newUser = this.userRepo.create({ ...data, isEmailVerified: true })
     return this.userRepo.save(newUser)
   }
 
@@ -72,6 +69,50 @@ class AuthRepository {
 
   static updateGoogleProfile(id: string, data: { avatarUrl?: string }) {
     return this.userRepo.update(id, data)
+  }
+
+  static findAuthToken(tokenHash: string, type: AuthTokenType) {
+    return this.authTokenRepo.findOne({
+      where: { token: tokenHash, type, usedAt: IsNull(), expiresAt: MoreThan(new Date()) }
+    })
+  }
+
+  static markEmailVerified(userId: string) {
+    return this.userRepo.update(userId, { isEmailVerified: true })
+  }
+
+  static markAuthTokenUsed(id: string) {
+    return this.authTokenRepo.update(id, { usedAt: new Date() })
+  }
+
+  static deleteUserAuthTokensByType(userId: string, type: AuthTokenType) {
+    return this.authTokenRepo.delete({ userId, type })
+  }
+
+  static createAuthToken(data: { tokenHash: string; userId: string; type: AuthTokenType; expiresAt: Date }) {
+    const token = this.authTokenRepo.create({
+      token: data.tokenHash,
+      userId: data.userId,
+      type: data.type,
+      expiresAt: data.expiresAt
+    })
+    return this.authTokenRepo.save(token)
+  }
+
+  static updatePassword(userId: string, hashedPassword: string) {
+    return this.userRepo.update(userId, { password: hashedPassword })
+  }
+
+  private static get userRepo() {
+    return AppDataSource.getDataSource().getRepository(User)
+  }
+
+  private static get refreshTokenRepo() {
+    return AppDataSource.getDataSource().getRepository(RefreshToken)
+  }
+
+  private static get authTokenRepo() {
+    return AppDataSource.getDataSource().getRepository(AuthToken)
   }
 }
 

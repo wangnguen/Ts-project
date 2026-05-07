@@ -17,19 +17,7 @@ export function applySecurityMiddlewares(app: express.Application): void {
     })
   )
 
-  app.use(
-    helmet(
-      env.NODE_ENV === 'production'
-        ? {}
-        : {
-            contentSecurityPolicy: {
-              directives: {
-                'upgrade-insecure-requests': null
-              }
-            }
-          }
-    )
-  )
+  app.use(helmet(env.NODE_ENV === 'production' ? {} : { contentSecurityPolicy: false }))
 
   app.use(compression())
   app.use(globalRateLimiterMiddleware)

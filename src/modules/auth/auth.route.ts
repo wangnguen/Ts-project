@@ -3,7 +3,15 @@ import { Router } from 'express'
 import { AuthMiddleware, authRateLimiterMiddleware, validateBody, validateQuery } from '@common/middlewares'
 
 import AuthController from './auth.controller'
-import { LoginBodySchema, RegisterBodySchema, RefreshTokenBodySchema, GoogleCallbackBodySchema } from './dto'
+import {
+  LoginBodySchema,
+  RegisterBodySchema,
+  RefreshTokenBodySchema,
+  GoogleCallbackBodySchema,
+  VerifyEmailBodySchema,
+  ForgotPasswordBodySchema,
+  ResetPasswordBodySchema
+} from './dto'
 
 const router = Router()
 
@@ -35,5 +43,19 @@ router.post(
   validateBody(GoogleCallbackBodySchema),
   AuthController.verifyGoogleCallback
 )
+
+router.post(
+  '/forgot-password',
+  authRateLimiterMiddleware,
+  validateBody(ForgotPasswordBodySchema),
+  AuthController.forgotPassword
+)
+router.post(
+  '/reset-password',
+  authRateLimiterMiddleware,
+  validateBody(ResetPasswordBodySchema),
+  AuthController.resetPassword
+)
+router.post('/verify-email', authRateLimiterMiddleware, validateBody(VerifyEmailBodySchema), AuthController.verifyEmail)
 
 export default router
