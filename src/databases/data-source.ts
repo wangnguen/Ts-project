@@ -15,7 +15,7 @@ class AppDataSource {
       AppDataSource.instance = new DataSource({
         type: 'postgres',
         url: env.DATABASE_URL,
-        ssl: env.NODE_ENV === 'development' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
+        ssl: { rejectUnauthorized: false },
         entities: [path.join(__dirname, 'entities', '*.entity.{ts,js}')],
         migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
         synchronize: false,

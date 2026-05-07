@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   api:
+    build: .
     image: ${DOCKERHUB_USERNAME}/api-ecommerce:latest
     container_name: api-ecommerce
     restart: unless-stopped
