@@ -3,7 +3,15 @@ import { Request, Response } from 'express'
 import GoogleService from '@common/services/google-auth.service'
 
 import AuthService from './auth.service'
-import { GoogleCallbackBody, LoginBody, RegisterBody, RefreshTokenBody } from './dto'
+import {
+  GoogleCallbackBody,
+  LoginBody,
+  RegisterBody,
+  RefreshTokenBody,
+  VerifyEmailBody,
+  ForgotPasswordBody,
+  ResetPasswordBody
+} from './dto'
 
 class AuthController {
   static async login(req: Request, res: Response) {
@@ -51,6 +59,27 @@ class AuthController {
     const query = req.query as GoogleCallbackBody
 
     return AuthController.handleGoogleCallback(query, res)
+  }
+
+  static async verifyEmail(req: Request, res: Response) {
+    const { token } = req.body as VerifyEmailBody
+    await AuthService.verifyEmail(token)
+
+    return res.ok(null, { message: 'Email verified successfully' })
+  }
+
+  static async forgotPassword(req: Request, res: Response) {
+    const { email } = req.body as ForgotPasswordBody
+    await AuthService.forgotPassword(email)
+
+    return res.ok(null, { message: 'Reset link has been sent' })
+  }
+
+  static async resetPassword(req: Request, res: Response) {
+    const { token, password } = req.body as ResetPasswordBody
+    await AuthService.resetPassword(token, password)
+
+    return res.ok(null, { message: 'Password reset successful' })
   }
 
   private static async handleGoogleCallback(body: GoogleCallbackBody, res: Response) {

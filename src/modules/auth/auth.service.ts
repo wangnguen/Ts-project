@@ -2,11 +2,18 @@ import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
 
 import { env } from '@common/config'
-import { GOOGLE_AUTH, SALT_ROUNDS } from '@common/constants'
+import {
+  AUTH_TOKEN,
+  GOOGLE_AUTH,
+  RESET_PASSWORD_EXPIRE_MINUTES,
+  SALT_ROUNDS,
+  VERIFY_EMAIL_EXPIRE_MINUTES
+} from '@common/constants'
 import { ConflictError, UnauthorizedError } from '@common/errors'
-import { JWTService } from '@common/services'
+import { EmailService, JWTService } from '@common/services'
 import { AuthResponse, AuthUser, GoogleProfile } from '@common/types'
 import { generateOAuthState, consumeOAuthState } from '@common/utils/oauth-state.store'
+import { generateRandomDigits, generateSecureToken, hashAuthToken } from '@common/utils/random'
 
 import { User } from '@entities/user.entity'
 
@@ -14,6 +21,8 @@ import AuthRepository from './auth.repository'
 import { LoginBody, RegisterBody } from './dto'
 
 class AuthService {
+  private static emailService = new EmailService()
+
   static async login(dto: LoginBody): Promise<AuthResponse> {
     const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
     if (!existingUser || !existingUser.password) {
@@ -48,6 +57,16 @@ class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS)
     const newUser = await AuthRepository.createUser({ ...dto, password: hashedPassword })
+
+    const token = generateSecureToken()
+    const expiresAt = new Date(Date.now() + VERIFY_EMAIL_EXPIRE_MINUTES * 60 * 1000)
+    await AuthRepository.createAuthToken({
+      tokenHash: hashAuthToken(token),
+      userId: newUser.id,
+      type: AUTH_TOKEN.VERIFY_EMAIL,
+      expiresAt
+    })
+    await AuthService.emailService.sendVerifyEmail(newUser.email, token, newUser.fullName)
 
     const user = instanceToPlain(newUser) as AuthUser
 
@@ -145,6 +164,49 @@ class AuthService {
     const user = instanceToPlain(newUser) as AuthUser
 
     return { accessToken, refreshToken, user }
+  }
+
+  static async verifyEmail(token: string): Promise<void> {
+    const authToken = await AuthRepository.findAuthToken(hashAuthToken(token), AUTH_TOKEN.VERIFY_EMAIL)
+    if (!authToken || authToken.expiresAt < new Date() || authToken.usedAt) {
+      throw new UnauthorizedError('Invalid or expired token')
+    }
+
+    await Promise.all([
+      AuthRepository.markAuthTokenUsed(authToken.id),
+      AuthRepository.markEmailVerified(authToken.userId)
+    ])
+  }
+
+  static async forgotPassword(email: string): Promise<void> {
+    const user = await AuthRepository.findByEmail(email)
+    if (!user) return
+
+    const otp = generateRandomDigits(6)
+    const expiresAt = new Date(Date.now() + RESET_PASSWORD_EXPIRE_MINUTES * 60 * 1000)
+
+    await AuthRepository.deleteUserAuthTokensByType(user.id, AUTH_TOKEN.RESET_PASSWORD)
+    await AuthRepository.createAuthToken({
+      tokenHash: hashAuthToken(otp),
+      userId: user.id,
+      type: AUTH_TOKEN.RESET_PASSWORD,
+      expiresAt
+    })
+    await this.emailService.sendResetPasswordEmail(user.email, otp)
+  }
+
+  static async resetPassword(token: string, newPassword: string): Promise<void> {
+    const authToken = await AuthRepository.findAuthToken(hashAuthToken(token), AUTH_TOKEN.RESET_PASSWORD)
+    if (!authToken || authToken.expiresAt < new Date() || authToken.usedAt) {
+      throw new UnauthorizedError('Invalid or expired token')
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
+
+    await Promise.all([
+      AuthRepository.markAuthTokenUsed(authToken.id),
+      AuthRepository.updatePassword(authToken.userId, hashedPassword)
+    ])
   }
 
   private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
