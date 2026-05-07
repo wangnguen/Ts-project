@@ -1,9 +1,18 @@
+import { env } from '@common/config'
+
 export const USER_ROLE = {
   ADMIN: 'admin',
   USER: 'user'
 } as const
 
 export type UserRole = (typeof USER_ROLE)[keyof typeof USER_ROLE]
+
+export const AUTH_TOKEN = {
+  VERIFY_EMAIL: 'VERIFY_EMAIL',
+  RESET_PASSWORD: 'RESET_PASSWORD'
+} as const
+
+export type AuthTokenType = (typeof AUTH_TOKEN)[keyof typeof AUTH_TOKEN]
 
 export const GOOGLE_AUTH = {
   URL: 'https://accounts.google.com/o/oauth2/v2/auth',
@@ -12,10 +21,7 @@ export const GOOGLE_AUTH = {
   USERINFO_URL: 'https://www.googleapis.com/oauth2/v2/userinfo'
 }
 
-export const EMAIL_TEMPLATE = {
-  VERIFY_EMAIL: process.env.RESEND_VERIFY_TEMPLATE_ID!,
-  RESET_PASSWORD: process.env.RESEND_RESET_PASSWORD_TEMPLATE_ID!
-} as const
+export const VERIFY_EMAIL_EXPIRE_MINUTES = env.VERIFY_EMAIL_EXPIRE_MINUTES
+export const RESET_PASSWORD_EXPIRE_MINUTES = env.RESET_PASSWORD_EXPIRE_MINUTES
 
-export const VERIFY_EMAIL_EXPIRE_MINUTES = Number(process.env.VERIFY_EMAIL_EXPIRE_MINUTES)
-export const RESET_PASSWORD_EXPIRE_MINUTES = Number(process.env.RESET_PASSWORD_EXPIRE_MINUTES)
+export const TOKEN_LENGTH = 6

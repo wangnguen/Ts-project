@@ -29,9 +29,6 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.url().default('http://localhost:8080/api/v1/auth/google/callback'),
   RESEND_FROM: z.email().default('onboarding@resend.dev'),
   RESEND_API_KEY: z.string().min(1),
-  RESEND_RECIPIENTS_EMAIL: z.email().default(''),
-  RESEND_VERIFY_TEMPLATE_ID: z.string().min(1),
-  RESEND_RESET_PASSWORD_TEMPLATE_ID: z.string().min(1),
   APP_NAME: z.string().min(1).default('Ts Project'),
   VERIFY_EMAIL_EXPIRE_MINUTES: z.coerce.number().int().positive().default(10),
   RESET_PASSWORD_EXPIRE_MINUTES: z.coerce.number().int().positive().default(5)
