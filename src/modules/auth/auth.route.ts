@@ -53,14 +53,14 @@ router.post(
 router.post(
   '/reset-password',
   authRateLimiterMiddleware,
-  AuthMiddleware.authenticateRefreshToken,
+  AuthMiddleware.authenticate,
   validateBody(ResetPasswordBodySchema),
   AuthController.resetPassword
 )
 router.post(
   '/verify-email',
   authRateLimiterMiddleware,
-  AuthMiddleware.authenticateRefreshToken,
+  AuthMiddleware.authenticate,
   validateBody(VerifyEmailBodySchema),
   AuthController.verifyEmail
 )
