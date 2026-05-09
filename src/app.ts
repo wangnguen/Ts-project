@@ -1,9 +1,10 @@
 import express from 'express'
 import swaggerUi from 'swagger-ui-express'
 
+import { buildOpenAPIDocument } from '@docs/openapi'
+
 import { applyAppMiddlewares, applySecurityMiddlewares } from '@common/config/app-middleware'
 import env from '@common/config/env'
-import { buildOpenAPIDocument } from '@common/docs/openapi'
 import { ErrorMiddleware } from '@common/middlewares'
 
 import moduleRoutes from '@modules/index'

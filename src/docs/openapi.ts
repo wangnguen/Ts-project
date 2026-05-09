@@ -12,9 +12,9 @@ export function buildOpenAPIDocument() {
   return generator.generateDocument({
     openapi: '3.0.0',
     info: {
-      title: 'E-Commerce API',
+      title: 'My API',
       version: '1.0.0',
-      description: 'REST API documentation for the E-Commerce platform.'
+      description: 'REST API documentation.'
     },
     servers: [{ url: '/api/v1', description: 'API v1' }]
   })

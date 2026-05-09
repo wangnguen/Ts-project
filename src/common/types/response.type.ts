@@ -25,3 +25,19 @@ export type ErrorPayload = {
   message?: string
   errors?: ValidationErrorItem[]
 }
+
+export type ApiSuccessResponse<T> = {
+  statusCode: number
+  message: string
+  data: SuccessData<T>
+  path: string
+  timestamp: string
+}
+
+export type ApiErrorResponse = {
+  statusCode: number
+  message: string
+  path: string
+  timestamp: string
+  errors?: ValidationErrorItem[]
+}

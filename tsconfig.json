@@ -14,7 +14,8 @@
       "@common/*": ["./src/common/*"],
       "@modules/*": ["./src/modules/*"],
       "@entities/*": ["./src/databases/entities/*"],
-      "@databases/*": ["./src/databases/*"]
+      "@databases/*": ["./src/databases/*"],
+      "@docs/*": ["./src/docs/*"]
     }
   },
   "include": ["src/**/*"],

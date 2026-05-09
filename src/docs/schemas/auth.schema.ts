@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 
-import { registry } from '@common/docs/registry'
+import { registry } from '@docs/registry'
 
 import {
   ForgotPasswordBodySchema,
