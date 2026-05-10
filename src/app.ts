@@ -15,14 +15,14 @@ applySecurityMiddlewares(app)
 
 applyAppMiddlewares(app)
 
-app.get('/', (_req, res) => res.redirect('/api/v1/docs'))
+app.get('/', (_req, res) => res.redirect('/docs'))
 
 app.use('/api/v1', moduleRoutes)
 
 if (env.ENABLE_DOCS) {
   const document = buildOpenAPIDocument()
-  app.get('/api/v1/docs/json', (_req, res) => res.json(document))
-  app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(document))
+  app.get('/docs/json', (_req, res) => res.json(document))
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(document))
 }
 
 app.use(ErrorMiddleware.notFound)
