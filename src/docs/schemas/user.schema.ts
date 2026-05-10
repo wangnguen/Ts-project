@@ -4,8 +4,14 @@ import { registry } from '@docs/registry'
 
 import { UpdateUserBodySchema, UpdateUserPasswordBodySchema } from '@modules/user/dto'
 
-import { AuthUserSchema } from './auth.schema'
-import { errorResponse, successWrapper } from './shared'
+import {
+  successWrapper,
+  jsonBody,
+  unauthorizedResponse,
+  badRequestResponse,
+  conflictResponse,
+  AuthUserSchema
+} from './shared'
 
 registry.registerPath({
   method: 'get',
@@ -22,7 +28,7 @@ registry.registerPath({
         }
       }
     },
-    401: errorResponse(401, 'Unauthorized — missing or invalid access token', 'Unauthorized')
+    401: unauthorizedResponse('Unauthorized — missing or invalid access token')
   }
 })
 
@@ -33,16 +39,10 @@ registry.registerPath({
   summary: 'Update current user profile',
   security: [{ bearerAuth: [] }],
   request: {
+    ...jsonBody(UpdateUserBodySchema),
     body: {
-      description: 'At least one field required',
-      required: true,
-      content: {
-        'application/json': {
-          schema: UpdateUserBodySchema.openapi({
-            example: { username: 'jane_doe', fullName: 'Jane Doe' }
-          })
-        }
-      }
+      ...jsonBody(UpdateUserBodySchema).body,
+      description: 'At least one field required'
     }
   },
   responses: {
@@ -54,9 +54,9 @@ registry.registerPath({
         }
       }
     },
-    400: errorResponse(400, 'Validation error or no fields provided', 'Validation failed'),
-    401: errorResponse(401, 'Unauthorized', 'Unauthorized'),
-    409: errorResponse(409, 'Username already taken', 'Conflict')
+    400: badRequestResponse('Validation error or no fields provided'),
+    401: unauthorizedResponse('Unauthorized'),
+    409: conflictResponse('Username already taken')
   }
 })
 
@@ -66,36 +66,21 @@ registry.registerPath({
   tags: ['Users'],
   summary: 'Change current user password',
   security: [{ bearerAuth: [] }],
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: UpdateUserPasswordBodySchema.openapi({
-            example: {
-              currentPassword: 'OldP@ss123!',
-              newPassword: 'NewP@ss456!',
-              confirmPassword: 'NewP@ss456!'
-            }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(UpdateUserPasswordBodySchema),
   responses: {
     200: {
       description: 'Password updated successfully',
       content: {
         'application/json': {
           schema: successWrapper(
-            z.object({ message: z.string().openapi({ example: 'Password updated successfully' }) }),
+            z.object({ message: z.string().meta({ example: 'Password updated successfully' }) }),
             '/users/me/password'
           )
         }
       }
     },
-    400: errorResponse(400, 'Validation error or passwords do not match', 'Validation failed'),
-    401: errorResponse(401, 'Unauthorized or incorrect current password', 'Unauthorized')
+    400: badRequestResponse('Validation error or passwords do not match'),
+    401: unauthorizedResponse('Unauthorized or incorrect current password')
   }
 })
 
@@ -109,6 +94,6 @@ registry.registerPath({
     204: {
       description: 'Account deleted successfully'
     },
-    401: errorResponse(401, 'Unauthorized', 'Unauthorized')
+    401: unauthorizedResponse('Unauthorized')
   }
 })

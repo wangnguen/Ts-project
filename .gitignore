@@ -33,3 +33,4 @@ coverage
 # Agent files
 .agent/
 .claude/
+CLAUDE.MD

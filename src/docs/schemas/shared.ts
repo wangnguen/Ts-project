@@ -1,32 +1,50 @@
-import { z } from 'zod/v4'
+import { z, ZodType } from 'zod/v4'
 
-export const successWrapper = <T extends z.ZodTypeAny>(dataSchema: T, pathExample: string) =>
+import { registry } from '@docs/registry'
+
+export const jsonBody = (schema: ZodType) => ({
+  body: {
+    required: true,
+    content: {
+      'application/json': {
+        schema
+      }
+    }
+  }
+})
+
+export const successWrapper = <T extends z.ZodTypeAny>(
+  dataSchema: T,
+  pathExample: string,
+  statusCode: number = 200,
+  message: string = 'OK'
+) =>
   z.object({
-    statusCode: z.number().openapi({ example: 200 }),
-    message: z.string().openapi({ example: 'OK' }),
+    statusCode: z.number().meta({ example: statusCode }),
+    message: z.string().meta({ example: message }),
     data: dataSchema,
-    path: z.string().openapi({ example: pathExample }),
-    timestamp: z.string().datetime().openapi({ example: '2024-01-15T10:30:00.000Z' })
+    path: z.string().meta({ example: pathExample }),
+    timestamp: z.string().datetime().meta({ example: '2024-01-15T10:30:00.000Z' })
   })
 
 export const ErrorResponseSchema = z.object({
-  statusCode: z.number().openapi({ example: 400 }),
-  message: z.string().openapi({ example: 'Bad Request' }),
-  path: z.string().openapi({ example: '/api/v1/...' }),
-  timestamp: z.string().datetime().openapi({ example: '2024-01-15T10:30:00.000Z' })
+  statusCode: z.number().meta({ example: 400 }),
+  message: z.string().meta({ example: 'Bad Request' }),
+  path: z.string().meta({ example: '/api/v1/...' }),
+  timestamp: z.string().datetime().meta({ example: '2024-01-15T10:30:00.000Z' })
 })
 
 const ValidationErrorResponseSchema = z.object({
-  statusCode: z.number().openapi({ example: 422 }),
-  message: z.string().openapi({ example: 'Unprocessable Entity' }),
-  path: z.string().openapi({ example: '/api/v1/...' }),
-  timestamp: z.string().datetime().openapi({ example: '2024-01-15T10:30:00.000Z' }),
+  statusCode: z.number().meta({ example: 422 }),
+  message: z.string().meta({ example: 'Unprocessable Entity' }),
+  path: z.string().meta({ example: '/api/v1/...' }),
+  timestamp: z.string().datetime().meta({ example: '2024-01-15T10:30:00.000Z' }),
   errors: z
     .array(
       z.object({
-        field: z.string().openapi({ example: 'body.email' }),
-        message: z.string().openapi({ example: 'Invalid email' }),
-        code: z.string().openapi({ example: 'invalid_string' })
+        field: z.string().meta({ example: 'body.email' }),
+        message: z.string().meta({ example: 'Invalid email' }),
+        code: z.string().meta({ example: 'invalid_string' })
       })
     )
     .optional()
@@ -36,7 +54,7 @@ export const errorResponse = (statusCode: number, description: string, message: 
   description,
   content: {
     'application/json': {
-      schema: ErrorResponseSchema.openapi({
+      schema: ErrorResponseSchema.meta({
         example: { statusCode, message, path: '/api/v1/...', timestamp: '2024-01-15T10:30:00.000Z' }
       })
     }
@@ -47,7 +65,7 @@ export const validationErrorResponse = (description: string = 'Validation error'
   description,
   content: {
     'application/json': {
-      schema: ValidationErrorResponseSchema.openapi({
+      schema: ValidationErrorResponseSchema.meta({
         example: {
           statusCode: 422,
           message: 'Unprocessable Entity',
@@ -59,3 +77,43 @@ export const validationErrorResponse = (description: string = 'Validation error'
     }
   }
 })
+
+export const badRequestResponse = (description: string = 'Bad Request') =>
+  errorResponse(400, description, 'Bad Request')
+
+export const unauthorizedResponse = (description: string = 'Unauthorized') =>
+  errorResponse(401, description, 'Unauthorized')
+
+export const conflictResponse = (description: string = 'Conflict') => errorResponse(409, description, 'Conflict')
+
+export const rateLimitResponse = () => errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+
+export const TokenPairSchema = registry.register(
+  'TokenPair',
+  z.object({
+    accessToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
+    refreshToken: z.string().meta({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' })
+  })
+)
+
+export const AuthUserSchema = registry.register(
+  'AuthUser',
+  z.object({
+    id: z.string().uuid().meta({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    username: z.string().nullable().meta({ example: 'kimnguen79' }),
+    email: z.string().email().meta({ example: 'kimnguen79lc@gmail.com' }),
+    fullName: z.string().meta({ example: 'Kim Nguyen' }),
+    role: z.enum(['user', 'admin']).meta({ example: 'user' }),
+    googleId: z.string().nullable().optional().meta({ example: null }),
+    avatarUrl: z.string().url().nullable().optional().meta({ example: null })
+  })
+)
+
+export const AuthResponseSchema = registry.register(
+  'AuthResponse',
+  z.object({
+    accessToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
+    refreshToken: z.string().meta({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' }),
+    user: AuthUserSchema
+  })
+)

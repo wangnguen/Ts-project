@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon",
     "dev:ts": "node -r @swc-node/register --watch src/index.ts",
-    "build": "rimraf dist && tsc && tsc-alias",
+    "build": "rimraf dist && tsc && tsc-alias && node -e \"require('fs').cpSync('src/assets', 'dist/assets', {recursive: true})\"",
     "type-check": "tsc --noEmit",
     "start": "node dist/index.js",
     "lint": "eslint .",

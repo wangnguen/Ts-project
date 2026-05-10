@@ -12,73 +12,36 @@ import {
   VerifyEmailBodySchema
 } from '@modules/auth/dto'
 
-import { errorResponse, validationErrorResponse, successWrapper } from './shared'
-
-export const TokenPairSchema = registry.register(
-  'TokenPair',
-  z.object({
-    accessToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
-    refreshToken: z.string().openapi({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' })
-  })
-)
-
-export const AuthUserSchema = registry.register(
-  'AuthUser',
-  z.object({
-    id: z.string().uuid().openapi({ example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
-    username: z.string().nullable().openapi({ example: 'kimnguen79' }),
-    email: z.string().email().openapi({ example: 'kimnguen79lc@gmail.com' }),
-    fullName: z.string().openapi({ example: 'Kim Nguyen' }),
-    role: z.enum(['user', 'admin']).openapi({ example: 'user' }),
-    googleId: z.string().nullable().optional().openapi({ example: null }),
-    avatarUrl: z.string().url().nullable().optional().openapi({ example: null })
-  })
-)
-
-export const AuthResponseSchema = registry.register(
-  'AuthResponse',
-  z.object({
-    accessToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
-    refreshToken: z.string().openapi({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' }),
-    user: AuthUserSchema
-  })
-)
+import {
+  validationErrorResponse,
+  successWrapper,
+  jsonBody,
+  unauthorizedResponse,
+  conflictResponse,
+  rateLimitResponse,
+  TokenPairSchema,
+  AuthUserSchema,
+  AuthResponseSchema
+} from './shared'
 
 registry.registerPath({
   method: 'post',
   path: '/auth/register',
   tags: ['Auth'],
   summary: 'Register a new user',
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: RegisterBodySchema.openapi({
-            example: {
-              username: 'kimnguen79',
-              email: 'kimnguen79lc@gmail.com',
-              password: 'Abc123!@#',
-              confirmPassword: 'Abc123!@#',
-              fullName: 'Kim Nguyen'
-            }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(RegisterBodySchema),
   responses: {
     201: {
       description: 'User registered successfully',
       content: {
         'application/json': {
-          schema: successWrapper(z.object({ user: AuthUserSchema }), '/auth/register')
+          schema: successWrapper(z.object({ user: AuthUserSchema }), '/auth/register', 201, 'Registration successful')
         }
       }
     },
-    409: errorResponse(409, 'Email or username already exists', 'Conflict'),
+    409: conflictResponse('Email or username already exists'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -87,30 +50,19 @@ registry.registerPath({
   path: '/auth/login',
   tags: ['Auth'],
   summary: 'Login with email and password',
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: LoginBodySchema.openapi({
-            example: { email: 'kimnguen79lc@gmail.com', password: 'Abc123!@#' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(LoginBodySchema),
   responses: {
     200: {
       description: 'Login successful',
       content: {
         'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/login')
+          schema: successWrapper(AuthResponseSchema, '/auth/login', 200, 'Login successful')
         }
       }
     },
-    401: errorResponse(401, 'Invalid credentials', 'Unauthorized'),
+    401: unauthorizedResponse('Invalid credentials'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -120,28 +72,17 @@ registry.registerPath({
   tags: ['Auth'],
   summary: 'Logout — invalidate refresh token',
   security: [{ refreshTokenAuth: [] }],
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: RefreshTokenBodySchema.openapi({
-            example: { refreshToken: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(RefreshTokenBodySchema),
   responses: {
     200: {
       description: 'Logged out successfully',
       content: {
         'application/json': {
-          schema: successWrapper(z.null(), '/auth/logout')
+          schema: successWrapper(z.null(), '/auth/logout', 200, 'Logout successful')
         }
       }
     },
-    401: errorResponse(401, 'Invalid or expired refresh token', 'Unauthorized')
+    401: unauthorizedResponse('Invalid or expired refresh token')
   }
 })
 
@@ -151,28 +92,17 @@ registry.registerPath({
   tags: ['Auth'],
   summary: 'Issue new token pair from refresh token',
   security: [{ refreshTokenAuth: [] }],
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: RefreshTokenBodySchema.openapi({
-            example: { refreshToken: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(RefreshTokenBodySchema),
   responses: {
     200: {
       description: 'New token pair issued',
       content: {
         'application/json': {
-          schema: successWrapper(TokenPairSchema, '/auth/refresh-token')
+          schema: successWrapper(TokenPairSchema, '/auth/refresh-token', 200, 'Token refreshed successfully')
         }
       }
     },
-    401: errorResponse(401, 'Invalid or expired refresh token', 'Unauthorized')
+    401: unauthorizedResponse('Invalid or expired refresh token')
   }
 })
 
@@ -188,15 +118,17 @@ registry.registerPath({
         'application/json': {
           schema: successWrapper(
             z.object({
-              url: z.string().url().openapi({ example: 'https://accounts.google.com/o/oauth2/v2/auth?...' }),
-              state: z.string().openapi({ example: 'random-csrf-token' })
+              url: z.string().url().meta({ example: 'https://accounts.google.com/o/oauth2/v2/auth?...' }),
+              state: z.string().meta({ example: 'random-csrf-token' })
             }),
-            '/auth/google'
+            '/auth/google',
+            200,
+            'Google OAuth URL generated successfully'
           )
         }
       }
     },
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -208,23 +140,21 @@ registry.registerPath({
   description:
     '⚠️ **Cannot be tested via Swagger "Try it out"** — This is a redirect endpoint. Google automatically redirects the user here with `code` and `state` query parameters after OAuth approval. Do not manually call this endpoint.',
   request: {
-    query: GoogleCallbackBodySchema.openapi({
-      example: { code: '4/0AfJohXn...', state: 'random-csrf-token' }
-    })
+    query: GoogleCallbackBodySchema
   },
   responses: {
     200: {
       description: 'Login successful',
       content: {
         'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/google/callback')
+          schema: successWrapper(AuthResponseSchema, '/auth/google/callback', 200, 'Google authentication successful')
         }
       }
     },
-    401: errorResponse(401, 'Invalid or expired OAuth state / Google account mismatch', 'Unauthorized'),
-    409: errorResponse(409, 'Email already registered with password — link Google from account settings', 'Conflict'),
+    401: unauthorizedResponse('Invalid or expired OAuth state / Google account mismatch'),
+    409: conflictResponse('Email already registered with password — link Google from account settings'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -235,31 +165,20 @@ registry.registerPath({
   summary: 'Google OAuth callback via body (mobile / SPA)',
   description:
     'Alternative OAuth callback method for mobile apps or SPAs. Frontend receives `code` and `state` from Google, then sends them to this endpoint.',
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: GoogleCallbackBodySchema.openapi({
-            example: { code: '4/0AfJohXn...', state: 'random-csrf-token' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(GoogleCallbackBodySchema),
   responses: {
     200: {
       description: 'Login successful',
       content: {
         'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/google/callback')
+          schema: successWrapper(AuthResponseSchema, '/auth/google/callback', 200, 'Google authentication successful')
         }
       }
     },
-    401: errorResponse(401, 'Invalid or expired OAuth state / Google account mismatch', 'Unauthorized'),
-    409: errorResponse(409, 'Email already registered with password — link Google from account settings', 'Conflict'),
+    401: unauthorizedResponse('Invalid or expired OAuth state / Google account mismatch'),
+    409: conflictResponse('Email already registered with password — link Google from account settings'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -270,30 +189,19 @@ registry.registerPath({
   summary: 'Request a password reset email',
   description:
     'Sends a 6-digit OTP code to the provided email address. **Requirements**: User must have verified their email address and have a password (email/password auth only, not Google OAuth). Always returns 200 regardless of whether the email exists (privacy protection). Rate limited.',
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: ForgotPasswordBodySchema.openapi({
-            example: { email: 'kimnguen79lc@gmail.com' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(ForgotPasswordBodySchema),
   responses: {
     200: {
       description: 'Reset email sent (or silently skipped if email not found / not verified / Google OAuth user)',
       content: {
         'application/json': {
-          schema: successWrapper(z.null(), '/auth/forgot-password')
+          schema: successWrapper(z.null(), '/auth/forgot-password', 200, 'Reset link has been sent')
         }
       }
     },
-    409: errorResponse(409, 'User created via Google OAuth — use Google login instead', 'Conflict'),
+    409: conflictResponse('User created via Google OAuth — use Google login instead'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -304,34 +212,19 @@ registry.registerPath({
   summary: 'Reset password using OTP code from email',
   description:
     "Completes the password reset flow. No authentication required — the 6-digit OTP sent to the user's email is sufficient to verify identity.",
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: ResetPasswordBodySchema.openapi({
-            example: {
-              token: '123456',
-              password: 'Abc123!@#',
-              confirmPassword: 'Abc123!@#'
-            }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(ResetPasswordBodySchema),
   responses: {
     200: {
       description: 'Password reset successfully',
       content: {
         'application/json': {
-          schema: successWrapper(z.null(), '/auth/reset-password')
+          schema: successWrapper(z.null(), '/auth/reset-password', 200, 'Password reset successful')
         }
       }
     },
-    401: errorResponse(401, 'Invalid, expired or already used OTP token', 'Unauthorized'),
+    401: unauthorizedResponse('Invalid, expired or already used OTP token'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })
 
@@ -342,29 +235,18 @@ registry.registerPath({
   summary: 'Verify email address using token from email link',
   description:
     "Confirms the user's email address. No authentication required — the secure token sent via email link is sufficient to verify identity.",
-  request: {
-    body: {
-      required: true,
-      content: {
-        'application/json': {
-          schema: VerifyEmailBodySchema.openapi({
-            example: { token: 'a3f9c2d1e8b74056af12cd93e6b5a201' }
-          })
-        }
-      }
-    }
-  },
+  request: jsonBody(VerifyEmailBodySchema),
   responses: {
     200: {
       description: 'Email verified successfully',
       content: {
         'application/json': {
-          schema: successWrapper(z.null(), '/auth/verify-email')
+          schema: successWrapper(z.null(), '/auth/verify-email', 200, 'Email verified successfully')
         }
       }
     },
-    401: errorResponse(401, 'Invalid, expired or already used verification token', 'Unauthorized'),
+    401: unauthorizedResponse('Invalid, expired or already used verification token'),
     422: validationErrorResponse(),
-    429: errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
+    429: rateLimitResponse()
   }
 })

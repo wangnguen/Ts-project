@@ -55,13 +55,13 @@ class ResponseMiddleware {
     payload?: SuccessPayload
   ) {
     const message = payload?.message || defaultMessage
-    const response = {
+    const response: ApiSuccessResponse<T> = {
       statusCode,
       message,
-      data: instanceToPlain(data),
+      data: instanceToPlain(data) as SuccessData<T>,
       path: res.req.originalUrl,
       timestamp: new Date().toISOString()
-    } as ApiSuccessResponse<T>
+    }
     return res.status(statusCode).json(response)
   }
 
@@ -72,13 +72,13 @@ class ResponseMiddleware {
     payload?: ErrorPayload
   ) {
     const message = payload?.message || defaultMessage
-    const response = {
+    const response: ApiErrorResponse = {
       statusCode,
       message,
       path: res.req.originalUrl,
       timestamp: new Date().toISOString(),
       errors: payload?.errors
-    } as ApiErrorResponse
+    }
     return res.status(statusCode).json(response)
   }
 }
