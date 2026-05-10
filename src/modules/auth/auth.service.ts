@@ -12,11 +12,14 @@ import {
 import { ConflictError, UnauthorizedError } from '@common/errors'
 import { EmailService, JWTService } from '@common/services'
 import { AuthResponse, AuthUser, GoogleProfile } from '@common/types'
-import { generateOAuthState, consumeOAuthState } from '@common/utils/oauth-state.store'
 import { generateRandomDigits, generateSecureToken, hashAuthToken } from '@common/utils/random'
 
+import { AuthToken } from '@entities/auth-token.entity'
 import { User } from '@entities/user.entity'
 
+import AppDataSource from '@databases/data-source'
+
+import AuthCacheService from './auth-cache.service'
 import AuthRepository from './auth.repository'
 import { LoginBody, RegisterBody } from './dto'
 
@@ -47,30 +50,34 @@ class AuthService {
       AuthRepository.findByUsername(dto.username)
     ])
 
-    if (existingEmail) {
-      throw new ConflictError('Email is already in use')
-    }
-
-    if (existingUsername) {
-      throw new ConflictError('Username is already in use')
-    }
+    if (existingEmail) throw new ConflictError('Email is already in use')
+    if (existingUsername) throw new ConflictError('Username is already in use')
 
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS)
-    const newUser = await AuthRepository.createUser({ ...dto, password: hashedPassword })
-
     const token = generateSecureToken()
     const expiresAt = new Date(Date.now() + VERIFY_EMAIL_EXPIRE_MINUTES * 60 * 1000)
-    await AuthRepository.createAuthToken({
-      tokenHash: hashAuthToken(token),
-      userId: newUser.id,
-      type: AUTH_TOKEN.VERIFY_EMAIL,
-      expiresAt
+
+    const newUser = await AppDataSource.getDataSource().transaction(async (manager) => {
+      const userRepo = manager.getRepository(User)
+      const authTokenRepo = manager.getRepository(AuthToken)
+
+      const created = userRepo.create({ ...dto, password: hashedPassword })
+      const savedUser = await userRepo.save(created)
+
+      const tokenEntity = authTokenRepo.create({
+        token: hashAuthToken(token),
+        userId: savedUser.id,
+        type: AUTH_TOKEN.VERIFY_EMAIL,
+        expiresAt
+      })
+      await authTokenRepo.save(tokenEntity)
+
+      return savedUser
     })
+
     await AuthService.emailService.sendVerifyEmail(newUser.email, token, newUser.fullName)
 
-    const user = instanceToPlain(newUser) as AuthUser
-
-    return user
+    return instanceToPlain(newUser) as AuthUser
   }
 
   static async logout(refreshToken: string): Promise<void> {
@@ -112,7 +119,7 @@ class AuthService {
   }
 
   static createGoogleAuthUrl(): { url: string; state: string } {
-    const state = generateOAuthState()
+    const state = AuthCacheService.generateOAuthState()
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID,
       redirect_uri: env.GOOGLE_CALLBACK_URL,
@@ -125,7 +132,7 @@ class AuthService {
   }
 
   static verifyOAuthState(state: string): void {
-    if (!consumeOAuthState(state)) {
+    if (!AuthCacheService.consumeOAuthState(state)) {
       throw new UnauthorizedError('Invalid or expired OAuth state. Please try again.')
     }
   }

@@ -47,3 +47,18 @@ export type GoogleProfile = {
   fullName: string
   avatarUrl?: string | null
 }
+
+export type EmailParams = {
+  name: string
+  appName: string
+  supportEmail: string
+  expireMinutes: number
+}
+
+export type VerifyEmailParams = EmailParams & {
+  verifyUrl: string
+}
+
+export type ResetPasswordParams = EmailParams & {
+  code: string
+}

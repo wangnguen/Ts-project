@@ -13,7 +13,10 @@ class HealthService {
     let dbStatus: DatabaseStatus = 'disconnected'
     try {
       if (dataSource.isInitialized) {
-        await dataSource.query('SELECT 1')
+        await Promise.race([
+          dataSource.query('SELECT 1'),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ])
         dbStatus = 'connected'
       }
     } catch {

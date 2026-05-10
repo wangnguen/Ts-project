@@ -3,7 +3,8 @@ import { z } from 'zod/v4'
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CLIENT_URL: z
+  CLIENT_URL: z.string().url(),
+  CLIENT_ORIGINS: z
     .string()
     .transform((val) => val.split(',').map((url) => url.trim()))
     .refine(
@@ -16,7 +17,7 @@ const envSchema = z.object({
             return false
           }
         }),
-      'Each CLIENT_URL must be a valid URL'
+      'Each CLIENT_ORIGINS must be a valid URL'
     ),
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(32),

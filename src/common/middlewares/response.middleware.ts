@@ -2,8 +2,7 @@ import { instanceToPlain } from 'class-transformer'
 import { Request, Response, NextFunction } from 'express'
 import { ReasonPhrases, StatusCodes } from 'http-status-codes'
 
-import { ApiErrorResponse, ApiSuccessResponse } from '@common/models/'
-import { ErrorPayload, SuccessData, SuccessPayload } from '@common/types'
+import { ApiErrorResponse, ApiSuccessResponse, ErrorPayload, SuccessData, SuccessPayload } from '@common/types'
 
 class ResponseMiddleware {
   static extendResponse = (_req: Request, res: Response, next: NextFunction) => {
@@ -55,17 +54,15 @@ class ResponseMiddleware {
     defaultMessage: string = ReasonPhrases.OK,
     payload?: SuccessPayload
   ) {
-    return res
-      .status(statusCode)
-      .json(
-        new ApiSuccessResponse(
-          statusCode,
-          payload?.message || defaultMessage,
-          instanceToPlain(data),
-          res.req.originalUrl,
-          new Date().toISOString()
-        )
-      )
+    const message = payload?.message || defaultMessage
+    const response: ApiSuccessResponse<T> = {
+      statusCode,
+      message,
+      data: instanceToPlain(data) as SuccessData<T>,
+      path: res.req.originalUrl,
+      timestamp: new Date().toISOString()
+    }
+    return res.status(statusCode).json(response)
   }
 
   private static sendError(
@@ -74,17 +71,15 @@ class ResponseMiddleware {
     defaultMessage: string = ReasonPhrases.BAD_REQUEST,
     payload?: ErrorPayload
   ) {
-    return res
-      .status(statusCode)
-      .json(
-        new ApiErrorResponse(
-          statusCode,
-          payload?.message || defaultMessage,
-          res.req.originalUrl,
-          new Date().toISOString(),
-          payload?.errors
-        )
-      )
+    const message = payload?.message || defaultMessage
+    const response: ApiErrorResponse = {
+      statusCode,
+      message,
+      path: res.req.originalUrl,
+      timestamp: new Date().toISOString(),
+      errors: payload?.errors
+    }
+    return res.status(statusCode).json(response)
   }
 }
 

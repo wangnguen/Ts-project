@@ -9,7 +9,7 @@ const logger = pino({
   level: isProd ? 'info' : 'debug',
 
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'refreshToken'],
+    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'refreshToken', 'code'],
     censor: '[REDACTED]'
   },
 

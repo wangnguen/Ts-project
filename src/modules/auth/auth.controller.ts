@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-import GoogleService from '@common/services/google-auth.service'
+import { GoogleAuthService } from '@common/services'
 
 import AuthService from './auth.service'
 import {
@@ -85,7 +85,7 @@ class AuthController {
   private static async handleGoogleCallback(body: GoogleCallbackBody, res: Response) {
     AuthService.verifyOAuthState(body.state)
 
-    const { email, fullName, googleId, avatarUrl } = await GoogleService.getProfileFromAuthCode(body.code)
+    const { email, fullName, googleId, avatarUrl } = await GoogleAuthService.getProfileFromAuthCode(body.code)
 
     const { accessToken, refreshToken, user } = await AuthService.verifyGoogleCallback({
       email,
