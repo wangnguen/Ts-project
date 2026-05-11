@@ -10,15 +10,56 @@ import {
   RefreshTokenBody,
   VerifyEmailBody,
   ForgotPasswordBody,
-  ResetPasswordBody
+  ResetPasswordBody,
+  VerifyTwoFactorLoginBody,
+  ConfirmTwoFactorBody,
+  DisableTwoFactorBody
 } from './dto'
 
 class AuthController {
   static async login(req: Request, res: Response) {
     const body = req.body as LoginBody
-    const { accessToken, refreshToken, user } = await AuthService.login(body)
+    const result = await AuthService.login(body)
 
+    if (result.requiresTwoFactor) {
+      return res.ok(
+        { requiresTwoFactor: true, twoFactorToken: result.twoFactorToken },
+        { message: 'Two-factor authentication required' }
+      )
+    }
+
+    return res.ok(
+      { accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user },
+      { message: 'Login successful' }
+    )
+  }
+
+  static async setup2FA(req: Request, res: Response) {
+    const userId = req.user!.id
+    const result = await AuthService.setup2FA(userId)
+    return res.ok(result, {
+      message: 'Scan the QR code with your authenticator app'
+    })
+  }
+
+  static async confirm2FA(req: Request, res: Response) {
+    const userId = req.user!.id
+    const { code } = req.body as ConfirmTwoFactorBody
+    await AuthService.confirm2FA(userId, code)
+    return res.ok(null, { message: '2FA enabled successfully' })
+  }
+
+  static async verifyTwoFactorLogin(req: Request, res: Response) {
+    const { twoFactorToken, code } = req.body as VerifyTwoFactorLoginBody
+    const { accessToken, refreshToken, user } = await AuthService.verifyTwoFactorLogin(twoFactorToken, code)
     return res.ok({ accessToken, refreshToken, user }, { message: 'Login successful' })
+  }
+
+  static async disable2FA(req: Request, res: Response) {
+    const userId = req.user!.id
+    const { code } = req.body as DisableTwoFactorBody
+    await AuthService.disable2FA(userId, code)
+    return res.ok(null, { message: '2FA disabled successfully' })
   }
 
   static async register(req: Request, res: Response) {
