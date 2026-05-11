@@ -10,7 +10,10 @@ import {
   GoogleCallbackBodySchema,
   VerifyEmailBodySchema,
   ForgotPasswordBodySchema,
-  ResetPasswordBodySchema
+  ResetPasswordBodySchema,
+  VerifyTwoFactorLoginBodySchema,
+  ConfirmTwoFactorBodySchema,
+  DisableTwoFactorBodySchema
 } from './dto'
 
 const router = Router()
@@ -57,5 +60,20 @@ router.post(
   AuthController.resetPassword
 )
 router.post('/verify-email', authRateLimiterMiddleware, validateBody(VerifyEmailBodySchema), AuthController.verifyEmail)
+
+router.get('/2fa/setup', AuthMiddleware.authenticate, AuthController.setup2FA)
+router.post(
+  '/2fa/setup/confirm',
+  AuthMiddleware.authenticate,
+  validateBody(ConfirmTwoFactorBodySchema),
+  AuthController.confirm2FA
+)
+router.post(
+  '/2fa/login/verify',
+  authRateLimiterMiddleware,
+  validateBody(VerifyTwoFactorLoginBodySchema),
+  AuthController.verifyTwoFactorLogin
+)
+router.delete('/2fa', AuthMiddleware.authenticate, validateBody(DisableTwoFactorBodySchema), AuthController.disable2FA)
 
 export default router

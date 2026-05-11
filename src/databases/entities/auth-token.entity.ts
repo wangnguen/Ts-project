@@ -19,7 +19,7 @@ export class AuthToken extends BaseEntity {
   type: AuthTokenType
 
   @Index('IDX_auth_tokens_user_id')
-  @Column({ name: 'user_id', type: 'uuid' })
+  @Column({ type: 'uuid' })
   userId: string
 
   @Column({ type: 'timestamp' })

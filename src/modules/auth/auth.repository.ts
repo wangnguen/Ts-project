@@ -103,6 +103,26 @@ class AuthRepository {
     return this.userRepo.update(userId, { password: hashedPassword })
   }
 
+  static findByIdWithTwoFactorSecret(id: string) {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.twoFactorSecret')
+      .where('user.id = :id', { id })
+      .getOne()
+  }
+
+  static saveTwoFactorSecret(id: string, secret: string) {
+    return this.userRepo.update(id, { twoFactorSecret: secret })
+  }
+
+  static enableTwoFactor(id: string) {
+    return this.userRepo.update(id, { isTwoFactorEnabled: true })
+  }
+
+  static disableTwoFactor(id: string) {
+    return this.userRepo.update(id, { isTwoFactorEnabled: false, twoFactorSecret: null })
+  }
+
   private static get userRepo() {
     return AppDataSource.getDataSource().getRepository(User)
   }

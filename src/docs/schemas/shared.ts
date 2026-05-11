@@ -86,6 +86,8 @@ export const unauthorizedResponse = (description: string = 'Unauthorized') =>
 
 export const conflictResponse = (description: string = 'Conflict') => errorResponse(409, description, 'Conflict')
 
+export const forbiddenResponse = (description: string = 'Forbidden') => errorResponse(403, description, 'Forbidden')
+
 export const rateLimitResponse = () => errorResponse(429, 'Too many requests (rate limited)', 'Too Many Requests')
 
 export const TokenPairSchema = registry.register(
