@@ -37,4 +37,11 @@ export class User extends BaseEntity {
 
   @Column({ type: 'boolean', default: false })
   isEmailVerified: boolean
+
+  @Column({ type: 'boolean', default: false })
+  isTwoFactorEnabled: boolean
+
+  @Exclude({ toPlainOnly: true })
+  @Column({ type: 'varchar', length: 255, select: false, nullable: true })
+  twoFactorSecret?: string | null
 }
