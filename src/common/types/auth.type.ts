@@ -41,13 +41,8 @@ export type GoogleUserInfo = {
   picture?: string
 }
 
-export type TwoFactorTokenPayload = {
-  sub: string
-  type: '2fa-pending'
-}
-
 export type LoginResult =
-  | { requiresTwoFactor: true; twoFactorToken: string }
+  | { requiresTwoFactor: true; pendingToken: string }
   | (AuthResponse & { requiresTwoFactor: false })
 
 export type GoogleProfile = {

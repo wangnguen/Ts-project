@@ -52,13 +52,7 @@ const envSchema = z.object({
   APP_NAME: z.string().min(1).default('Ts Project'),
   VERIFY_EMAIL_EXPIRE_MINUTES: z.coerce.number().int().positive().default(10),
   RESET_PASSWORD_EXPIRE_MINUTES: z.coerce.number().int().positive().default(5),
-  ENABLE_DOCS: z.coerce.boolean().default(true),
-  JWT_2FA_SECRET: z.string().min(32),
-  JWT_2FA_EXPIRES_IN: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5 * 60)
+  ENABLE_DOCS: z.coerce.boolean().default(true)
 })
 
 export type EnvSchema = z.infer<typeof envSchema>

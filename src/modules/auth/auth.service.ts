@@ -1,7 +1,6 @@
 import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
 import { generateSecret, generateURI, verifySync } from 'otplib'
-import { toDataURL } from 'qrcode'
 
 import { env } from '@common/config'
 import {
@@ -29,77 +28,37 @@ class AuthService {
   private static emailService = new EmailService()
 
   static async login(dto: LoginBody): Promise<LoginResult> {
-    const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
-    if (!existingUser || !existingUser.password) {
-      throw new UnauthorizedError('User or password is invalid')
-    }
-
-    const isPasswordValid: boolean = await AuthService.comparePassword(dto.password, existingUser.password)
-    if (!isPasswordValid) {
-      throw new UnauthorizedError('User or password is invalid')
-    }
-
-    if (existingUser.isTwoFactorEnabled) {
-      const twoFactorToken = JWTService.generateTwoFactorToken({ sub: existingUser.id })
-      return { requiresTwoFactor: true, twoFactorToken }
-    }
-
-    const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
-    const user = instanceToPlain(existingUser) as AuthUser
-
-    return { requiresTwoFactor: false, accessToken, refreshToken, user }
+    if (dto.step === '2fa') return AuthService.verifyTwoFactor(dto)
+    return AuthService.loginWithPassword(dto)
   }
 
-  static async setup2FA(userId: string): Promise<{ qrCodeUrl: string; resetPending: boolean }> {
+  static async setup2FA(userId: string): Promise<{ otpauthUrl: string; setUpToken: string }> {
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
     if (!user) throw new UnauthorizedError('User not found')
     if (!user.isEmailVerified) throw new ForbiddenError('Email must be verified before enabling 2FA')
     if (user.isTwoFactorEnabled) throw new ConflictError('2FA is already enabled')
 
-    const resetPending = !!user.twoFactorSecret
-
     const secret = generateSecret()
     const otpauthUrl = generateURI({ label: user.email, issuer: env.APP_NAME, secret })
 
-    const qrCodeUrl = await toDataURL(otpauthUrl)
+    const setUpToken = AuthCacheService.generateTwoFactorToken(userId, secret)
 
-    await AuthRepository.saveTwoFactorSecret(userId, secret)
-
-    return { qrCodeUrl, resetPending }
+    return { otpauthUrl, setUpToken }
   }
 
-  static async confirm2FA(userId: string, code: string): Promise<void> {
+  static async confirm2FA(userId: string, code: string, setUpToken: string): Promise<void> {
+    const tokenData = AuthCacheService.getTwoFactorTokenData(setUpToken)
+    if (!tokenData || tokenData.userId !== userId) throw new UnauthorizedError('Invalid or expired setup session')
+
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
     if (!user) throw new UnauthorizedError('User not found')
     if (user.isTwoFactorEnabled) throw new ConflictError('2FA is already enabled')
-    if (!user.twoFactorSecret) throw new BadRequestError('2FA setup not initiated')
 
-    const { valid } = verifySync({ token: code, secret: user.twoFactorSecret })
+    const { valid } = verifySync({ token: code, secret: tokenData.secret })
     if (!valid) throw new BadRequestError('Invalid 2FA code')
 
-    await AuthRepository.enableTwoFactor(userId)
-  }
-
-  static async verifyTwoFactorLogin(twoFactorToken: string, code: string): Promise<AuthResponse> {
-    let payload: { sub: string; type: string }
-    try {
-      payload = JWTService.verifyTwoFactorToken(twoFactorToken)
-    } catch {
-      throw new UnauthorizedError('Invalid or expired 2FA token')
-    }
-
-    if (payload.type !== '2fa-pending') throw new UnauthorizedError('Invalid token type')
-
-    const user = await AuthRepository.findByIdWithTwoFactorSecret(payload.sub)
-    if (!user || !user.twoFactorSecret || !user.isTwoFactorEnabled) {
-      throw new UnauthorizedError('2FA is not enabled for this account')
-    }
-
-    const { valid } = verifySync({ token: code, secret: user.twoFactorSecret })
-    if (!valid) throw new UnauthorizedError('Invalid 2FA code')
-
-    const { accessToken, refreshToken } = await AuthService.generateTokens(user)
-    return { accessToken, refreshToken, user: instanceToPlain(user) as AuthUser }
+    AuthCacheService.consumeTwoFactorToken(setUpToken)
+    await AuthRepository.saveTwoFactorSecretAndEnable(userId, tokenData.secret)
   }
 
   static async disable2FA(userId: string, code: string): Promise<void> {
@@ -283,6 +242,42 @@ class AuthService {
       AuthRepository.markAuthTokenUsed(authToken.id),
       AuthRepository.updatePassword(authToken.userId, hashedPassword)
     ])
+  }
+
+  private static async loginWithPassword(dto: { email: string; password: string }): Promise<LoginResult> {
+    const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
+    if (!existingUser || !existingUser.password) {
+      throw new UnauthorizedError('User or password is invalid')
+    }
+
+    const isPasswordValid = await AuthService.comparePassword(dto.password, existingUser.password)
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('User or password is invalid')
+    }
+
+    if (existingUser.isTwoFactorEnabled) {
+      const pendingToken = AuthCacheService.generatePendingLoginToken(existingUser.id)
+      return { requiresTwoFactor: true, pendingToken }
+    }
+
+    const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
+    const user = instanceToPlain(existingUser) as AuthUser
+    return { requiresTwoFactor: false, accessToken, refreshToken, user }
+  }
+
+  private static async verifyTwoFactor(dto: { pendingToken: string; code: string }): Promise<LoginResult> {
+    const userId = AuthCacheService.peekPendingLoginToken(dto.pendingToken)
+    if (!userId) throw new UnauthorizedError('Invalid or expired 2FA session')
+
+    const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
+    if (!user || !user.twoFactorSecret) throw new UnauthorizedError('User not found')
+
+    const { valid } = verifySync({ token: dto.code, secret: user.twoFactorSecret })
+    if (!valid) throw new UnauthorizedError('Invalid 2FA code')
+
+    AuthCacheService.consumePendingLoginToken(dto.pendingToken)
+    const { accessToken, refreshToken } = await AuthService.generateTokens(user)
+    return { requiresTwoFactor: false, accessToken, refreshToken, user: instanceToPlain(user) as AuthUser }
   }
 
   private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {

@@ -2,11 +2,48 @@ import { randomBytes } from 'node:crypto'
 
 import NodeCache from 'node-cache'
 
-// WARNING: in-memory only — state is lost on restart and not shared across multiple instances.
-// Replace with Redis when scaling to multiple server instances.
 const STATE_TTL_SECONDS = 10 * 60
+const TWO_FACTOR_TOKEN_TTL_SECONDS = 5 * 60
+const TOKEN_BYTES = 32
+
+type TwoFactorTokenData = {
+  userId: string
+  secret: string
+}
 
 class AuthCacheService {
+  static generateOAuthState(): string {
+    return this.setToken('oauth:state', true, STATE_TTL_SECONDS)
+  }
+
+  static consumeOAuthState(state: string): boolean {
+    return this.consumeToken<boolean>('oauth:state', state) === true
+  }
+
+  static generateTwoFactorToken(userId: string, secret: string): string {
+    return this.setToken<TwoFactorTokenData>('2fa:token', { userId, secret }, TWO_FACTOR_TOKEN_TTL_SECONDS)
+  }
+
+  static getTwoFactorTokenData(token: string): TwoFactorTokenData | null {
+    return this.peekToken<TwoFactorTokenData>('2fa:token', token)
+  }
+
+  static consumeTwoFactorToken(token: string): TwoFactorTokenData | null {
+    return this.consumeToken<TwoFactorTokenData>('2fa:token', token)
+  }
+
+  static generatePendingLoginToken(userId: string): string {
+    return this.setToken<string>('2fa:pending', userId, TWO_FACTOR_TOKEN_TTL_SECONDS)
+  }
+
+  static peekPendingLoginToken(token: string): string | null {
+    return this.peekToken<string>('2fa:pending', token)
+  }
+
+  static consumePendingLoginToken(token: string): string | null {
+    return this.consumeToken<string>('2fa:pending', token)
+  }
+
   private static cache: NodeCache = new NodeCache({
     stdTTL: STATE_TTL_SECONDS,
     checkperiod: 60,
@@ -14,26 +51,33 @@ class AuthCacheService {
     useClones: false
   })
 
-  static generateOAuthState(): string {
-    const state = randomBytes(32).toString('hex')
-
-    this.cache.set(this.getOAuthStateKey(state), true, STATE_TTL_SECONDS)
-
-    return state
+  private static generateToken(): string {
+    return randomBytes(TOKEN_BYTES).toString('hex')
   }
 
-  static consumeOAuthState(state: string): boolean {
-    const key = this.getOAuthStateKey(state)
+  private static getKey(namespace: string, token: string): string {
+    return `${namespace}:${token}`
+  }
 
-    const isValid = this.cache.get<boolean>(key) === true
+  private static setToken<T>(namespace: string, value: T, ttlSeconds: number): string {
+    const token = this.generateToken()
+
+    this.cache.set(this.getKey(namespace, token), value, ttlSeconds)
+
+    return token
+  }
+
+  private static peekToken<T>(namespace: string, token: string): T | null {
+    return this.cache.get<T>(this.getKey(namespace, token)) ?? null
+  }
+
+  private static consumeToken<T>(namespace: string, token: string): T | null {
+    const key = this.getKey(namespace, token)
+    const value = this.cache.get<T>(key) ?? null
 
     this.cache.del(key)
 
-    return isValid
-  }
-
-  private static getOAuthStateKey(state: string): string {
-    return `oauth:state:${state}`
+    return value
   }
 }
 

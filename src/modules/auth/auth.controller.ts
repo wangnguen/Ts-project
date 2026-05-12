@@ -11,7 +11,6 @@ import {
   VerifyEmailBody,
   ForgotPasswordBody,
   ResetPasswordBody,
-  VerifyTwoFactorLoginBody,
   ConfirmTwoFactorBody,
   DisableTwoFactorBody
 } from './dto'
@@ -23,7 +22,7 @@ class AuthController {
 
     if (result.requiresTwoFactor) {
       return res.ok(
-        { requiresTwoFactor: true, twoFactorToken: result.twoFactorToken },
+        { requiresTwoFactor: true, pendingToken: result.pendingToken },
         { message: 'Two-factor authentication required' }
       )
     }
@@ -38,21 +37,14 @@ class AuthController {
     const userId = req.user!.id
     const result = await AuthService.setup2FA(userId)
     return res.ok(result, {
-      message: 'Scan the QR code with your authenticator app'
+      message: 'Scan the otpauthUrl with your authenticator app to generate a QR code'
     })
   }
 
   static async confirm2FA(req: Request, res: Response) {
-    const userId = req.user!.id
-    const { code } = req.body as ConfirmTwoFactorBody
-    await AuthService.confirm2FA(userId, code)
+    const { code, setUpToken } = req.body as ConfirmTwoFactorBody
+    await AuthService.confirm2FA(req.user!.id, code, setUpToken)
     return res.ok(null, { message: '2FA enabled successfully' })
-  }
-
-  static async verifyTwoFactorLogin(req: Request, res: Response) {
-    const { twoFactorToken, code } = req.body as VerifyTwoFactorLoginBody
-    const { accessToken, refreshToken, user } = await AuthService.verifyTwoFactorLogin(twoFactorToken, code)
-    return res.ok({ accessToken, refreshToken, user }, { message: 'Login successful' })
   }
 
   static async disable2FA(req: Request, res: Response) {
@@ -84,7 +76,7 @@ class AuthController {
     return res.ok({ accessToken, refreshToken: newRefreshToken }, { message: 'Token refreshed successfully' })
   }
 
-  static async getGoogleRedirectUrl(req: Request, res: Response) {
+  static async getGoogleRedirectUrl(_req: Request, res: Response) {
     const { url, state } = AuthService.createGoogleAuthUrl()
 
     return res.ok({ url, state }, { message: 'Google OAuth URL generated successfully' })

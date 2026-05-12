@@ -111,12 +111,8 @@ class AuthRepository {
       .getOne()
   }
 
-  static saveTwoFactorSecret(id: string, secret: string) {
-    return this.userRepo.update(id, { twoFactorSecret: secret })
-  }
-
-  static enableTwoFactor(id: string) {
-    return this.userRepo.update(id, { isTwoFactorEnabled: true })
+  static saveTwoFactorSecretAndEnable(id: string, secret: string) {
+    return this.userRepo.update(id, { twoFactorSecret: secret, isTwoFactorEnabled: true })
   }
 
   static disableTwoFactor(id: string) {

@@ -11,7 +11,6 @@ import {
   VerifyEmailBodySchema,
   ForgotPasswordBodySchema,
   ResetPasswordBodySchema,
-  VerifyTwoFactorLoginBodySchema,
   ConfirmTwoFactorBodySchema,
   DisableTwoFactorBodySchema
 } from './dto'
@@ -61,19 +60,20 @@ router.post(
 )
 router.post('/verify-email', authRateLimiterMiddleware, validateBody(VerifyEmailBodySchema), AuthController.verifyEmail)
 
-router.get('/2fa/setup', AuthMiddleware.authenticate, AuthController.setup2FA)
+router.get('/2fa/setup', authRateLimiterMiddleware, AuthMiddleware.authenticate, AuthController.setup2FA)
 router.post(
   '/2fa/setup/confirm',
+  authRateLimiterMiddleware,
   AuthMiddleware.authenticate,
   validateBody(ConfirmTwoFactorBodySchema),
   AuthController.confirm2FA
 )
-router.post(
-  '/2fa/login/verify',
+router.delete(
+  '/2fa',
   authRateLimiterMiddleware,
-  validateBody(VerifyTwoFactorLoginBodySchema),
-  AuthController.verifyTwoFactorLogin
+  AuthMiddleware.authenticate,
+  validateBody(DisableTwoFactorBodySchema),
+  AuthController.disable2FA
 )
-router.delete('/2fa', AuthMiddleware.authenticate, validateBody(DisableTwoFactorBodySchema), AuthController.disable2FA)
 
 export default router
