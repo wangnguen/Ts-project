@@ -11,8 +11,7 @@ import {
   ResetPasswordBodySchema,
   VerifyEmailBodySchema,
   ConfirmTwoFactorBodySchema,
-  DisableTwoFactorBodySchema,
-  VerifyTwoFactorLoginBodySchema
+  DisableTwoFactorBodySchema
 } from '@modules/auth/dto'
 
 import {
@@ -33,18 +32,17 @@ const TwoFactorRequiredSchema = registry.register(
   'TwoFactorRequired',
   z.object({
     requiresTwoFactor: z.literal(true),
-    twoFactorToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
+    pendingToken: z.string().meta({ example: 'a3f8d2c1e4b57f9a...' })
   })
 )
 
 const TwoFactorSetupSchema = registry.register(
   'TwoFactorSetup',
   z.object({
-    qrCodeUrl: z.string().meta({ example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...' }),
-    resetPending: z.boolean().meta({
-      example: false,
-      description: 'true if a previous unconfirmed setup was overwritten — prompt user to re-scan'
-    })
+    otpauthUrl: z
+      .string()
+      .meta({ example: 'otpauth://totp/AppName:user@example.com?secret=BASE32SECRET&issuer=AppName' }),
+    setUpToken: z.string().meta({ example: 'a3f8d2c1e4b57f9a...' })
   })
 )
 
@@ -73,9 +71,9 @@ registry.registerPath({
   method: 'post',
   path: '/auth/login',
   tags: ['Auth'],
-  summary: 'Login with email and password',
+  summary: 'Login — password or 2FA step',
   description:
-    'Returns tokens and user on success. If the account has 2FA enabled, returns `{ requiresTwoFactor: true, twoFactorToken }` instead — use `POST /auth/2fa/login/verify` to complete the login.',
+    'Two-step login endpoint.\n\n**Step 1** — send `{ step: "password", email, password }`: returns tokens on success, or `{ requiresTwoFactor: true, pendingToken }` if 2FA is enabled.\n\n**Step 2** — send `{ step: "2fa", pendingToken, code }` with the TOTP code to complete login and receive tokens.\n\nThe `pendingToken` expires in 5 minutes.',
   request: jsonBody(LoginBodySchema),
   responses: {
     200: {
@@ -217,7 +215,7 @@ registry.registerPath({
   tags: ['Auth - Email'],
   summary: 'Request a password reset email',
   description:
-    'Sends a 6-digit OTP code to the provided email address. **Requirements**: User must have verified their email address and have a password (email/password auth only, not Google OAuth). Always returns 200 regardless of whether the email exists (privacy protection). Rate limited.',
+    'Sends a 6-digit OTP code to the provided email address.\n\n**Requirements**: User must have verified their email address and have a password (email/password auth only, not Google OAuth).\n\nAlways returns 200 regardless of whether the email exists (privacy protection). Rate limited.',
   request: jsonBody(ForgotPasswordBodySchema),
   responses: {
     200: {
@@ -284,20 +282,20 @@ registry.registerPath({
   method: 'get',
   path: '/auth/2fa/setup',
   tags: ['Auth - 2FA'],
-  summary: 'Initiate 2FA setup — get QR code',
+  summary: 'Initiate 2FA setup — get otpauth URL',
   description:
-    'Generates a TOTP secret and QR code (base64 data URL) for the authenticated user. Scan the QR code with an authenticator app (Google Authenticator, Authy, etc.), then confirm setup via `POST /auth/2fa/setup/confirm`. **2FA is not active until confirmed.**',
+    'Generates a TOTP secret for the authenticated user. Returns an `otpauthUrl` (`otpauth://totp/...`) to render a QR code client-side, and a `setUpToken` (valid 5 minutes) required to confirm setup.\n\nRender the QR code from `otpauthUrl` using any QR library, then scan it with an authenticator app.\n\n**2FA is not active until confirmed via `POST /auth/2fa/setup/confirm`.**',
   security: [{ bearerAuth: [] }],
   responses: {
     200: {
-      description: 'QR code returned',
+      description: 'otpauth URL returned',
       content: {
         'application/json': {
           schema: successWrapper(
             TwoFactorSetupSchema,
             '/auth/2fa/setup',
             200,
-            'Scan the QR code with your authenticator app, then confirm with /auth/2fa/confirm'
+            'Scan the otpauthUrl with your authenticator app to generate a QR code'
           )
         }
       }
@@ -314,7 +312,7 @@ registry.registerPath({
   tags: ['Auth - 2FA'],
   summary: 'Confirm and activate 2FA',
   description:
-    'Verifies the 6-digit TOTP code from the authenticator app and permanently enables 2FA for the account. Must be called after `GET /auth/2fa/setup`.',
+    'Verifies the 6-digit TOTP code from the authenticator app and permanently enables 2FA for the account.\n\nRequires the `setUpToken` returned by `GET /auth/2fa/setup` (expires in 5 minutes). The `setUpToken` is consumed on success.',
   security: [{ bearerAuth: [] }],
   request: jsonBody(ConfirmTwoFactorBodySchema),
   responses: {
@@ -327,32 +325,9 @@ registry.registerPath({
       }
     },
     400: badRequestResponse('Invalid TOTP code'),
-    401: unauthorizedResponse('Missing or invalid access token'),
+    401: unauthorizedResponse('Missing or invalid access token, or setUpToken expired / mismatched'),
     409: conflictResponse('2FA is already enabled'),
     422: validationErrorResponse()
-  }
-})
-
-registry.registerPath({
-  method: 'post',
-  path: '/auth/2fa/login/verify',
-  tags: ['Auth - 2FA'],
-  summary: 'Complete login with 2FA code',
-  description:
-    'Second step of login when the account has 2FA enabled. Submit the `twoFactorToken` received from `POST /auth/login` together with the 6-digit TOTP code from the authenticator app to get the final access and refresh tokens.',
-  request: jsonBody(VerifyTwoFactorLoginBodySchema),
-  responses: {
-    200: {
-      description: 'Login completed successfully',
-      content: {
-        'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/2fa/login/verify', 200, 'Login successful')
-        }
-      }
-    },
-    401: unauthorizedResponse('Invalid or expired two-factor token, or wrong TOTP code'),
-    422: validationErrorResponse(),
-    429: rateLimitResponse()
   }
 })
 
