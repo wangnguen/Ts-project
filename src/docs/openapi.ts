@@ -5,6 +5,7 @@ import './extend-zod'
 
 import './schemas/auth.schema'
 import './schemas/user.schema'
+import './schemas/monitor.schema'
 
 export function buildOpenAPIDocument() {
   const generator = new OpenApiGeneratorV3(registry.definitions)
