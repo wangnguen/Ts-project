@@ -2,12 +2,15 @@ import { z, ZodType } from 'zod/v4'
 
 import { registry } from '@docs/registry'
 
-export const jsonBody = (schema: ZodType) => ({
+type NamedExample = { summary?: string; description?: string; value?: unknown }
+
+export const jsonBody = (schema: ZodType, examples?: Record<string, NamedExample>) => ({
   body: {
     required: true,
     content: {
       'application/json': {
-        schema
+        schema,
+        ...(examples && { examples })
       }
     }
   }

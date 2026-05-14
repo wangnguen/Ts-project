@@ -6,6 +6,8 @@ import {
   ForgotPasswordBodySchema,
   GoogleCallbackBodySchema,
   LoginBodySchema,
+  LoginBodyExample,
+  LoginBodyTwoFactorExample,
   RefreshTokenBodySchema,
   RegisterBodySchema,
   ResetPasswordBodySchema,
@@ -74,7 +76,16 @@ registry.registerPath({
   summary: 'Login — password or 2FA step',
   description:
     'Two-step login endpoint.\n\n**Step 1** — send `{ step: "password", email, password }`: returns tokens on success, or `{ requiresTwoFactor: true, pendingToken }` if 2FA is enabled.\n\n**Step 2** — send `{ step: "2fa", pendingToken, code }` with the TOTP code to complete login and receive tokens.\n\nThe `pendingToken` expires in 5 minutes.',
-  request: jsonBody(LoginBodySchema),
+  request: jsonBody(LoginBodySchema, {
+    'step-password': {
+      summary: 'Step 1 — Email & password',
+      value: LoginBodyExample
+    },
+    'step-2fa': {
+      summary: 'Step 2 — TOTP code',
+      value: LoginBodyTwoFactorExample
+    }
+  }),
   responses: {
     200: {
       description: 'Login successful **or** 2FA required',
