@@ -11,7 +11,7 @@ class UserRepository {
     return this.userRepo.findOne({ where: { username } })
   }
 
-  static updateUser(id: string, updateData: Partial<Pick<User, 'username' | 'fullName'>>) {
+  static updateUser(id: string, updateData: Partial<Pick<User, 'username' | 'fullName' | 'avatarUrl'>>) {
     return this.userRepo.update({ id }, updateData)
   }
 

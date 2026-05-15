@@ -13,6 +13,7 @@ import {
 import { BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '@common/errors'
 import { EmailService, JWTService } from '@common/services'
 import { AuthResponse, AuthUser, GoogleProfile, LoginResult } from '@common/types'
+import { comparePassword } from '@common/utils/password'
 import { generateRandomDigits, generateSecureToken, hashAuthToken } from '@common/utils/random'
 
 import { AuthToken } from '@entities/auth-token.entity'
@@ -26,11 +27,6 @@ import { LoginBody, RegisterBody } from './dto'
 
 class AuthService {
   private static emailService = new EmailService()
-
-  static async login(dto: LoginBody): Promise<LoginResult> {
-    if (dto.step === '2fa') return AuthService.verifyTwoFactor(dto)
-    return AuthService.loginWithPassword(dto)
-  }
 
   static async setup2FA(userId: string): Promise<{ otpauthUrl: string; setUpToken: string }> {
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
@@ -242,6 +238,14 @@ class AuthService {
       AuthRepository.markAuthTokenUsed(authToken.id),
       AuthRepository.updatePassword(authToken.userId, hashedPassword)
     ])
+    await AuthRepository.deleteAllRefreshTokensByUserId(authToken.userId)
+  }
+
+  static async login(dto: LoginBody): Promise<LoginResult> {
+    if (dto.pendingToken && dto.code) {
+      return AuthService.verifyTwoFactorLogin(dto as LoginBody & { pendingToken: string; code: string })
+    }
+    return AuthService.loginWithPassword(dto)
   }
 
   private static async loginWithPassword(dto: { email: string; password: string }): Promise<LoginResult> {
@@ -250,7 +254,7 @@ class AuthService {
       throw new UnauthorizedError('User or password is invalid')
     }
 
-    const isPasswordValid = await AuthService.comparePassword(dto.password, existingUser.password)
+    const isPasswordValid = await comparePassword(dto.password, existingUser.password)
     if (!isPasswordValid) {
       throw new UnauthorizedError('User or password is invalid')
     }
@@ -265,23 +269,34 @@ class AuthService {
     return { requiresTwoFactor: false, accessToken, refreshToken, user }
   }
 
-  private static async verifyTwoFactor(dto: { pendingToken: string; code: string }): Promise<LoginResult> {
+  private static async verifyTwoFactorLogin(dto: {
+    email: string
+    password: string
+    pendingToken: string
+    code: string
+  }): Promise<LoginResult> {
+    const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
+    if (!existingUser || !existingUser.password) {
+      throw new UnauthorizedError('User or password is invalid')
+    }
+
+    const isPasswordValid = await comparePassword(dto.password, existingUser.password)
+    if (!isPasswordValid) {
+      throw new UnauthorizedError('User or password is invalid')
+    }
+
     const userId = AuthCacheService.peekPendingLoginToken(dto.pendingToken)
-    if (!userId) throw new UnauthorizedError('Invalid or expired 2FA session')
+    if (!userId || userId !== existingUser.id) throw new UnauthorizedError('Invalid or expired 2FA session')
 
-    const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!user || !user.twoFactorSecret) throw new UnauthorizedError('User not found')
+    const userWith2FA = await AuthRepository.findByIdWithTwoFactorSecret(userId)
+    if (!userWith2FA || !userWith2FA.twoFactorSecret) throw new UnauthorizedError('User not found')
 
-    const { valid } = verifySync({ token: dto.code, secret: user.twoFactorSecret })
+    const { valid } = verifySync({ token: dto.code, secret: userWith2FA.twoFactorSecret })
     if (!valid) throw new UnauthorizedError('Invalid 2FA code')
 
     AuthCacheService.consumePendingLoginToken(dto.pendingToken)
-    const { accessToken, refreshToken } = await AuthService.generateTokens(user)
-    return { requiresTwoFactor: false, accessToken, refreshToken, user: instanceToPlain(user) as AuthUser }
-  }
-
-  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
+    const { accessToken, refreshToken } = await AuthService.generateTokens(userWith2FA)
+    return { requiresTwoFactor: false, accessToken, refreshToken, user: instanceToPlain(userWith2FA) as AuthUser }
   }
 
   private static async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {

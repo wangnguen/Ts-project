@@ -119,6 +119,10 @@ class AuthRepository {
     return this.userRepo.update(id, { isTwoFactorEnabled: false, twoFactorSecret: null })
   }
 
+  static deleteAllRefreshTokensByUserId(userId: string) {
+    return this.refreshTokenRepo.delete({ userId })
+  }
+
   private static get userRepo() {
     return AppDataSource.getDataSource().getRepository(User)
   }

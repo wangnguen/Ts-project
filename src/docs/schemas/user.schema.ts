@@ -8,8 +8,8 @@ import {
   successWrapper,
   jsonBody,
   unauthorizedResponse,
-  badRequestResponse,
   conflictResponse,
+  validationErrorResponse,
   AuthUserSchema
 } from './shared'
 
@@ -28,7 +28,7 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Unauthorized — missing or invalid access token')
+    401: unauthorizedResponse('Missing or invalid access token')
   }
 })
 
@@ -38,25 +38,19 @@ registry.registerPath({
   tags: ['Users'],
   summary: 'Update current user profile',
   security: [{ bearerAuth: [] }],
-  request: {
-    ...jsonBody(UpdateUserBodySchema),
-    body: {
-      ...jsonBody(UpdateUserBodySchema).body,
-      description: 'At least one field required'
-    }
-  },
+  request: jsonBody(UpdateUserBodySchema),
   responses: {
     200: {
       description: 'User updated successfully',
       content: {
         'application/json': {
-          schema: successWrapper(AuthUserSchema, '/users/me')
+          schema: successWrapper(AuthUserSchema, '/users/me', 200, 'User updated successfully')
         }
       }
     },
-    400: badRequestResponse('Validation error or no fields provided'),
-    401: unauthorizedResponse('Unauthorized'),
-    409: conflictResponse('Username already taken')
+    401: unauthorizedResponse('Missing or invalid access token'),
+    409: conflictResponse('Username already taken'),
+    422: validationErrorResponse()
   }
 })
 
@@ -72,15 +66,12 @@ registry.registerPath({
       description: 'Password updated successfully',
       content: {
         'application/json': {
-          schema: successWrapper(
-            z.object({ message: z.string().meta({ example: 'Password updated successfully' }) }),
-            '/users/me/password'
-          )
+          schema: successWrapper(z.null(), '/users/me/password', 200, 'Password updated successfully')
         }
       }
     },
-    400: badRequestResponse('Validation error or passwords do not match'),
-    401: unauthorizedResponse('Unauthorized or incorrect current password')
+    401: unauthorizedResponse('Missing or invalid access token or incorrect current password'),
+    422: validationErrorResponse()
   }
 })
 
@@ -94,6 +85,6 @@ registry.registerPath({
     204: {
       description: 'Account deleted successfully'
     },
-    401: unauthorizedResponse('Unauthorized')
+    401: unauthorizedResponse('Missing or invalid access token')
   }
 })

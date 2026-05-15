@@ -5,28 +5,28 @@ import UserService from './user.service'
 
 class UserController {
   static async getUserInfo(req: Request, res: Response) {
-    const userId = req.user?.id as string
+    const userId = req.user!.id
     const user = await UserService.getUserInfo(userId)
-    res.ok(user)
+    return res.ok(user)
   }
 
   static async updateUserInfo(req: Request, res: Response) {
-    const userId = req.user?.id as string
+    const userId = req.user!.id
     const updateData = req.body as UpdateUserBody
     const updatedUser = await UserService.updateUserInfo(userId, updateData)
-    res.ok(updatedUser)
+    return res.ok(updatedUser, { message: 'User updated successfully' })
   }
 
   static async updateUserPassword(req: Request, res: Response) {
-    const userId = req.user?.id as string
+    const userId = req.user!.id
     const dto = req.body as UpdateUserPasswordBody
     await UserService.updateUserPassword(userId, dto)
-    res.ok({ message: 'Password updated successfully' })
+    return res.ok(null, { message: 'Password updated successfully' })
   }
 
   static async deleteUser(req: Request, res: Response) {
-    await UserService.deleteUser(req.user?.id as string)
-    res.ok({ message: 'User deleted successfully' })
+    await UserService.deleteUser(req.user!.id)
+    return res.status(204).send()
   }
 }
 

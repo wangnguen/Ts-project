@@ -73,16 +73,16 @@ registry.registerPath({
   method: 'post',
   path: '/auth/login',
   tags: ['Auth'],
-  summary: 'Login — password or 2FA step',
+  summary: 'Login with email and password',
   description:
-    'Two-step login endpoint.\n\n**Step 1** — send `{ step: "password", email, password }`: returns tokens on success, or `{ requiresTwoFactor: true, pendingToken }` if 2FA is enabled.\n\n**Step 2** — send `{ step: "2fa", pendingToken, code }` with the TOTP code to complete login and receive tokens.\n\nThe `pendingToken` expires in 5 minutes.',
+    'Single login endpoint for both password-only and 2FA accounts.\n\n**Step 1 — Password login**: send `{ email, password }`. If the account has no 2FA, tokens are returned immediately. If 2FA is enabled, returns `{ requiresTwoFactor: true, pendingToken }` instead.\n\n**Step 2 — 2FA completion**: send `{ email, password, pendingToken, code }` with the TOTP code to complete login and receive tokens.\n\nThe `pendingToken` expires in 5 minutes.',
   request: jsonBody(LoginBodySchema, {
-    'step-password': {
-      summary: 'Step 1 — Email & password',
+    'password-only': {
+      summary: 'No 2FA — email & password',
       value: LoginBodyExample
     },
-    'step-2fa': {
-      summary: 'Step 2 — TOTP code',
+    'with-2fa': {
+      summary: '2FA completion — include pendingToken & code',
       value: LoginBodyTwoFactorExample
     }
   }),
@@ -237,7 +237,6 @@ registry.registerPath({
         }
       }
     },
-    409: conflictResponse('User created via Google OAuth — use Google login instead'),
     422: validationErrorResponse(),
     429: rateLimitResponse()
   }

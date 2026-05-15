@@ -3,6 +3,9 @@ import { instanceToPlain } from 'class-transformer'
 
 import { SALT_ROUNDS } from '@common/constants'
 import { ConflictError, NotFoundError, UnauthorizedError } from '@common/errors'
+import { comparePassword } from '@common/utils/password'
+
+import AuthRepository from '@modules/auth/auth.repository'
 
 import { UpdateUserBody, UpdateUserPasswordBody } from './dto'
 import UserRepository from './user.repository'
@@ -50,12 +53,13 @@ class UserService {
       throw new UnauthorizedError('Account does not have a password set')
     }
 
-    const isCurrentPasswordValid = await this.comparePassword(dto.currentPassword, user.password)
+    const isCurrentPasswordValid = await comparePassword(dto.currentPassword, user.password)
     if (!isCurrentPasswordValid) {
       throw new UnauthorizedError('Current password is incorrect')
     }
     const newPasswordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS)
     await UserRepository.updateUserPassword(id, newPasswordHash)
+    await AuthRepository.deleteAllRefreshTokensByUserId(id)
   }
 
   static async deleteUser(id: string) {
@@ -63,10 +67,6 @@ class UserService {
     if (!result.affected) {
       throw new NotFoundError('User not found')
     }
-  }
-
-  private static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
   }
 }
 
