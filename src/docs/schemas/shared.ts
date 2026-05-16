@@ -96,8 +96,7 @@ export const rateLimitResponse = () => errorResponse(429, 'Too many requests (ra
 export const TokenPairSchema = registry.register(
   'TokenPair',
   z.object({
-    accessToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
-    refreshToken: z.string().meta({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' })
+    accessToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
   })
 )
 
@@ -118,7 +117,6 @@ export const AuthResponseSchema = registry.register(
   'AuthResponse',
   z.object({
     accessToken: z.string().meta({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
-    refreshToken: z.string().meta({ example: 'dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...' }),
     user: AuthUserSchema
   })
 )

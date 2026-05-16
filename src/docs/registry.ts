@@ -10,8 +10,9 @@ registry.registerComponent('securitySchemes', 'bearerAuth', {
 })
 
 registry.registerComponent('securitySchemes', 'refreshTokenAuth', {
-  type: 'http',
-  scheme: 'bearer',
-  bearerFormat: 'JWT',
-  description: 'Refresh token — used only for /auth/logout and /auth/refresh-token'
+  type: 'apiKey',
+  in: 'cookie',
+  name: '__secure-rt',
+  description:
+    'Refresh token stored in httpOnly cookie (__secure-rt). Set automatically after login — sent by the browser on same-origin requests.'
 })

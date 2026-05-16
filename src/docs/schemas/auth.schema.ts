@@ -8,7 +8,6 @@ import {
   LoginBodySchema,
   LoginBodyExample,
   LoginBodyTwoFactorExample,
-  RefreshTokenBodySchema,
   RegisterBodySchema,
   ResetPasswordBodySchema,
   VerifyEmailBodySchema,
@@ -109,8 +108,8 @@ registry.registerPath({
   path: '/auth/logout',
   tags: ['Auth'],
   summary: 'Logout — invalidate refresh token',
+  description: 'Reads the refresh token from the `__secure-rt` httpOnly cookie. No request body required.',
   security: [{ refreshTokenAuth: [] }],
-  request: jsonBody(RefreshTokenBodySchema),
   responses: {
     200: {
       description: 'Logged out successfully',
@@ -128,9 +127,10 @@ registry.registerPath({
   method: 'post',
   path: '/auth/refresh-token',
   tags: ['Auth'],
-  summary: 'Issue new token pair from refresh token',
+  summary: 'Issue new access token from refresh token',
+  description:
+    'Reads the refresh token from the `__secure-rt` httpOnly cookie. Returns a new access token in the response body and rotates the refresh token cookie. No request body required.',
   security: [{ refreshTokenAuth: [] }],
-  request: jsonBody(RefreshTokenBodySchema),
   responses: {
     200: {
       description: 'New token pair issued',

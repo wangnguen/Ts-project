@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 
+import { REFRESH_TOKEN_COOKIE_NAME } from '@common/constants'
 import { ForbiddenError, UnauthorizedError } from '@common/errors'
 import { JWTService } from '@common/services'
 
@@ -28,7 +29,7 @@ class AuthMiddleware {
   }
 
   static authenticateRefreshToken(req: Request, _res: Response, next: NextFunction) {
-    const refreshToken = req.body.refreshToken
+    const refreshToken = req.cookies[REFRESH_TOKEN_COOKIE_NAME]
     if (!refreshToken) return next(new UnauthorizedError('Invalid or expired refresh token'))
 
     try {

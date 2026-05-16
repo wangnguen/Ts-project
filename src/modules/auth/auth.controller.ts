@@ -1,5 +1,11 @@
 import { Request, Response } from 'express'
 
+import { env } from '@common/config'
+import {
+  REFRESH_TOKEN_COOKIE_MAX_AGE_MS,
+  REFRESH_TOKEN_COOKIE_NAME,
+  REFRESH_TOKEN_COOKIE_PATH
+} from '@common/constants'
 import { GoogleAuthService } from '@common/services'
 
 import AuthService from './auth.service'
@@ -7,7 +13,6 @@ import {
   GoogleCallbackBody,
   LoginBody,
   RegisterBody,
-  RefreshTokenBody,
   VerifyEmailBody,
   ForgotPasswordBody,
   ResetPasswordBody,
@@ -27,10 +32,15 @@ class AuthController {
       )
     }
 
-    return res.ok(
-      { accessToken: result.accessToken, refreshToken: result.refreshToken, user: result.user },
-      { message: 'Login successful' }
-    )
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: REFRESH_TOKEN_COOKIE_PATH,
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS
+    })
+
+    return res.ok({ accessToken: result.accessToken, user: result.user }, { message: 'Login successful' })
   }
 
   static async setup2FA(req: Request, res: Response) {
@@ -62,18 +72,26 @@ class AuthController {
   }
 
   static async logout(req: Request, res: Response) {
-    const { refreshToken } = req.body as RefreshTokenBody
+    const refreshToken = req.cookies[REFRESH_TOKEN_COOKIE_NAME]
     await AuthService.logout(refreshToken)
-
+    res.clearCookie(REFRESH_TOKEN_COOKIE_NAME, { path: REFRESH_TOKEN_COOKIE_PATH })
     return res.ok(null, { message: 'Logout successful' })
   }
 
   static async refreshToken(req: Request, res: Response) {
     const userId = req.refreshUserId as string
-    const oldRefreshToken = req.body.refreshToken
+    const oldRefreshToken = req.cookies[REFRESH_TOKEN_COOKIE_NAME]
     const { accessToken, refreshToken: newRefreshToken } = await AuthService.refreshToken(oldRefreshToken, userId)
 
-    return res.ok({ accessToken, refreshToken: newRefreshToken }, { message: 'Token refreshed successfully' })
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, newRefreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: REFRESH_TOKEN_COOKIE_PATH,
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS
+    })
+
+    return res.ok({ accessToken }, { message: 'Token refreshed successfully' })
   }
 
   static async getGoogleRedirectUrl(_req: Request, res: Response) {
@@ -127,7 +145,15 @@ class AuthController {
       avatarUrl
     })
 
-    return res.ok({ accessToken, refreshToken, user }, { message: 'Google authentication successful' })
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: REFRESH_TOKEN_COOKIE_PATH,
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS
+    })
+
+    return res.ok({ accessToken, user }, { message: 'Google authentication successful' })
   }
 }
 

@@ -22,7 +22,7 @@ app.use('/api/v1', moduleRoutes)
 if (env.ENABLE_DOCS) {
   const document = buildOpenAPIDocument()
   app.get('/docs/json', (_req, res) => res.json(document))
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(document))
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(document, { swaggerOptions: { withCredentials: true } }))
 }
 
 app.use(ErrorMiddleware.notFound)

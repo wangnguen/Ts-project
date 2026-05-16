@@ -6,7 +6,6 @@ import AuthController from './auth.controller'
 import {
   LoginBodySchema,
   RegisterBodySchema,
-  RefreshTokenBodySchema,
   GoogleCallbackBodySchema,
   VerifyEmailBodySchema,
   ForgotPasswordBodySchema,
@@ -19,18 +18,8 @@ const router = Router()
 
 router.post('/login', authRateLimiterMiddleware, validateBody(LoginBodySchema), AuthController.login)
 router.post('/register', authRateLimiterMiddleware, validateBody(RegisterBodySchema), AuthController.register)
-router.post(
-  '/logout',
-  AuthMiddleware.authenticateRefreshToken,
-  validateBody(RefreshTokenBodySchema),
-  AuthController.logout
-)
-router.post(
-  '/refresh-token',
-  AuthMiddleware.authenticateRefreshToken,
-  validateBody(RefreshTokenBodySchema),
-  AuthController.refreshToken
-)
+router.post('/logout', AuthMiddleware.authenticateRefreshToken, AuthController.logout)
+router.post('/refresh-token', AuthMiddleware.authenticateRefreshToken, AuthController.refreshToken)
 
 router.get('/google', authRateLimiterMiddleware, AuthController.getGoogleRedirectUrl)
 router.get(
