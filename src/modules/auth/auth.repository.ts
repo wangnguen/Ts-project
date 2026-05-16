@@ -16,6 +16,29 @@ class AuthRepository {
     return this.userRepo.save(newUser)
   }
 
+  static createUserWithVerifyToken(
+    userData: Omit<RegisterBody, 'confirmPassword'> & { password: string },
+    tokenData: { tokenHash: string; expiresAt: Date; type: AuthTokenType }
+  ) {
+    return AppDataSource.getDataSource().transaction(async (manager) => {
+      const userRepo = manager.getRepository(User)
+      const authTokenRepo = manager.getRepository(AuthToken)
+
+      const created = userRepo.create(userData)
+      const savedUser = await userRepo.save(created)
+
+      const tokenEntity = authTokenRepo.create({
+        token: tokenData.tokenHash,
+        userId: savedUser.id,
+        type: tokenData.type,
+        expiresAt: tokenData.expiresAt
+      })
+      await authTokenRepo.save(tokenEntity)
+
+      return savedUser
+    })
+  }
+
   static createOAuthUser(data: { email: string; fullName: string; googleId: string; avatarUrl?: string | null }) {
     const newUser = this.userRepo.create({ ...data, isEmailVerified: true })
     return this.userRepo.save(newUser)

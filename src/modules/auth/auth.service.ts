@@ -16,10 +16,7 @@ import { AuthResponse, AuthUser, GoogleProfile, LoginResult } from '@common/type
 import { comparePassword } from '@common/utils/password'
 import { generateRandomDigits, generateSecureToken, hashAuthToken } from '@common/utils/random'
 
-import { AuthToken } from '@entities/auth-token.entity'
 import { User } from '@entities/user.entity'
-
-import AppDataSource from '@databases/data-source'
 
 import AuthCacheService from './auth-cache.service'
 import AuthRepository from './auth.repository'
@@ -81,23 +78,10 @@ class AuthService {
     const token = generateSecureToken()
     const expiresAt = new Date(Date.now() + VERIFY_EMAIL_EXPIRE_MINUTES * 60 * 1000)
 
-    const newUser = await AppDataSource.getDataSource().transaction(async (manager) => {
-      const userRepo = manager.getRepository(User)
-      const authTokenRepo = manager.getRepository(AuthToken)
-
-      const created = userRepo.create({ ...dto, password: hashedPassword })
-      const savedUser = await userRepo.save(created)
-
-      const tokenEntity = authTokenRepo.create({
-        token: hashAuthToken(token),
-        userId: savedUser.id,
-        type: AUTH_TOKEN.VERIFY_EMAIL,
-        expiresAt
-      })
-      await authTokenRepo.save(tokenEntity)
-
-      return savedUser
-    })
+    const newUser = await AuthRepository.createUserWithVerifyToken(
+      { ...dto, password: hashedPassword },
+      { tokenHash: hashAuthToken(token), expiresAt, type: AUTH_TOKEN.VERIFY_EMAIL }
+    )
 
     await AuthService.emailService.sendVerifyEmail(newUser.email, token, newUser.fullName)
 
@@ -161,7 +145,7 @@ class AuthService {
     }
   }
 
-  static async verifyGoogleCallback(profile: GoogleProfile): Promise<AuthResponse> {
+  static async verifyGoogleCallback(profile: GoogleProfile): Promise<LoginResult> {
     const existingUser = await AuthRepository.findByEmail(profile.email)
 
     if (existingUser) {
@@ -178,9 +162,15 @@ class AuthService {
       await AuthRepository.updateGoogleProfile(existingUser.id, {
         avatarUrl: existingUser.avatarUrl ?? profile.avatarUrl ?? undefined
       })
+
+      if (existingUser.isTwoFactorEnabled) {
+        const pendingToken = AuthCacheService.generatePendingLoginToken(existingUser.id)
+        return { requiresTwoFactor: true, pendingToken }
+      }
+
       const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
       const user = instanceToPlain(existingUser) as AuthUser
-      return { accessToken, refreshToken, user }
+      return { requiresTwoFactor: false, accessToken, refreshToken, user }
     }
 
     const newUser = await AuthRepository.createOAuthUser({
@@ -191,10 +181,23 @@ class AuthService {
     })
 
     const { accessToken, refreshToken } = await AuthService.generateTokens(newUser)
-
     const user = instanceToPlain(newUser) as AuthUser
+    return { requiresTwoFactor: false, accessToken, refreshToken, user }
+  }
 
-    return { accessToken, refreshToken, user }
+  static async verifyTwoFactorLoginToken(pendingToken: string, code: string): Promise<AuthResponse> {
+    const userId = AuthCacheService.peekPendingLoginToken(pendingToken)
+    if (!userId) throw new UnauthorizedError('Invalid or expired 2FA session')
+
+    const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
+    if (!user || !user.twoFactorSecret) throw new NotFoundError('User not found')
+
+    const { valid } = verifySync({ token: code, secret: user.twoFactorSecret })
+    if (!valid) throw new BadRequestError('Invalid 2FA code')
+
+    AuthCacheService.consumePendingLoginToken(pendingToken)
+    const { accessToken, refreshToken } = await AuthService.generateTokens(user)
+    return { accessToken, refreshToken, user: instanceToPlain(user) as AuthUser }
   }
 
   static async verifyEmail(token: string): Promise<void> {
@@ -243,7 +246,8 @@ class AuthService {
 
   static async login(dto: LoginBody): Promise<LoginResult> {
     if (dto.pendingToken && dto.code) {
-      return AuthService.verifyTwoFactorLogin(dto as LoginBody & { pendingToken: string; code: string })
+      const authResponse = await AuthService.verifyTwoFactorLoginToken(dto.pendingToken, dto.code)
+      return { requiresTwoFactor: false, ...authResponse }
     }
     return AuthService.loginWithPassword(dto)
   }
@@ -267,36 +271,6 @@ class AuthService {
     const { accessToken, refreshToken } = await AuthService.generateTokens(existingUser)
     const user = instanceToPlain(existingUser) as AuthUser
     return { requiresTwoFactor: false, accessToken, refreshToken, user }
-  }
-
-  private static async verifyTwoFactorLogin(dto: {
-    email: string
-    password: string
-    pendingToken: string
-    code: string
-  }): Promise<LoginResult> {
-    const existingUser = await AuthRepository.findByEmailWithPassword(dto.email)
-    if (!existingUser || !existingUser.password) {
-      throw new UnauthorizedError('User or password is invalid')
-    }
-
-    const isPasswordValid = await comparePassword(dto.password, existingUser.password)
-    if (!isPasswordValid) {
-      throw new UnauthorizedError('User or password is invalid')
-    }
-
-    const userId = AuthCacheService.peekPendingLoginToken(dto.pendingToken)
-    if (!userId || userId !== existingUser.id) throw new UnauthorizedError('Invalid or expired 2FA session')
-
-    const userWith2FA = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!userWith2FA || !userWith2FA.twoFactorSecret) throw new NotFoundError('User not found')
-
-    const { valid } = verifySync({ token: dto.code, secret: userWith2FA.twoFactorSecret })
-    if (!valid) throw new BadRequestError('Invalid 2FA code')
-
-    AuthCacheService.consumePendingLoginToken(dto.pendingToken)
-    const { accessToken, refreshToken } = await AuthService.generateTokens(userWith2FA)
-    return { requiresTwoFactor: false, accessToken, refreshToken, user: instanceToPlain(userWith2FA) as AuthUser }
   }
 
   private static async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {

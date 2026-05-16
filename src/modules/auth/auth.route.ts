@@ -11,7 +11,8 @@ import {
   ForgotPasswordBodySchema,
   ResetPasswordBodySchema,
   ConfirmTwoFactorBodySchema,
-  DisableTwoFactorBodySchema
+  DisableTwoFactorBodySchema,
+  TwoFactorLoginBodySchema
 } from './dto'
 
 const router = Router()
@@ -43,6 +44,12 @@ router.post(
 )
 router.post('/verify-email', authRateLimiterMiddleware, validateBody(VerifyEmailBodySchema), AuthController.verifyEmail)
 
+router.post(
+  '/2fa/verify',
+  authRateLimiterMiddleware,
+  validateBody(TwoFactorLoginBodySchema),
+  AuthController.verifyTwoFactor
+)
 router.get('/2fa/setup', authRateLimiterMiddleware, AuthMiddleware.authenticate, AuthController.setup2FA)
 router.post(
   '/2fa/setup/confirm',

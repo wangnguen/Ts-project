@@ -12,7 +12,7 @@ registry.registerComponent('securitySchemes', 'bearerAuth', {
 registry.registerComponent('securitySchemes', 'refreshTokenAuth', {
   type: 'apiKey',
   in: 'cookie',
-  name: '__secure-rt',
+  name: 'rt',
   description:
-    'Refresh token stored in httpOnly cookie (__secure-rt). Set automatically after login — sent by the browser on same-origin requests.'
+    'Refresh token stored in httpOnly cookie (rt). Set automatically after login — sent by the browser on same-origin requests.'
 })

@@ -17,7 +17,8 @@ import {
   ForgotPasswordBody,
   ResetPasswordBody,
   ConfirmTwoFactorBody,
-  DisableTwoFactorBody
+  DisableTwoFactorBody,
+  TwoFactorLoginBody
 } from './dto'
 
 class AuthController {
@@ -127,17 +128,9 @@ class AuthController {
     return res.ok(null, { message: 'Password reset successful' })
   }
 
-  private static async handleGoogleCallback(body: GoogleCallbackBody, res: Response) {
-    AuthService.verifyOAuthState(body.state)
-
-    const { email, fullName, googleId, avatarUrl } = await GoogleAuthService.getProfileFromAuthCode(body.code)
-
-    const { accessToken, refreshToken, user } = await AuthService.verifyGoogleCallback({
-      email,
-      fullName,
-      googleId,
-      avatarUrl
-    })
+  static async verifyTwoFactor(req: Request, res: Response) {
+    const { pendingToken, code } = req.body as TwoFactorLoginBody
+    const { accessToken, refreshToken, user } = await AuthService.verifyTwoFactorLoginToken(pendingToken, code)
 
     res.cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken, {
       httpOnly: true,
@@ -147,7 +140,35 @@ class AuthController {
       maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS
     })
 
-    return res.ok({ accessToken, user }, { message: 'Google authentication successful' })
+    return res.ok({ accessToken, user }, { message: 'Login successful' })
+  }
+
+  private static async handleGoogleCallback(body: GoogleCallbackBody, res: Response) {
+    AuthService.verifyOAuthState(body.state)
+
+    const { email, fullName, googleId, avatarUrl } = await GoogleAuthService.getProfileFromAuthCode(body.code)
+
+    const result = await AuthService.verifyGoogleCallback({ email, fullName, googleId, avatarUrl })
+
+    if (result.requiresTwoFactor) {
+      return res.ok(
+        { requiresTwoFactor: true, pendingToken: result.pendingToken },
+        { message: 'Two-factor authentication required' }
+      )
+    }
+
+    res.cookie(REFRESH_TOKEN_COOKIE_NAME, result.refreshToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: REFRESH_TOKEN_COOKIE_PATH,
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS
+    })
+
+    return res.ok(
+      { accessToken: result.accessToken, user: result.user },
+      { message: 'Google authentication successful' }
+    )
   }
 }
 

@@ -74,8 +74,17 @@ registry.registerPath({
   path: '/auth/login',
   tags: ['Auth'],
   summary: 'Login with email and password',
-  description:
-    'Single login endpoint for both password-only and 2FA accounts.\n\n**Step 1 — Password login**: send `{ email, password }`. If the account has no 2FA, tokens are returned immediately. If 2FA is enabled, returns `{ requiresTwoFactor: true, pendingToken }` instead.\n\n**Step 2 — 2FA completion**: send `{ email, password, pendingToken, code }` with the TOTP code to complete login and receive tokens.\n\nThe `pendingToken` expires in 5 minutes.',
+  description: `Single login endpoint for both password-only and 2FA accounts.
+
+**Step 1 — Password login**: send \`{ email, password }\`. If the account has no 2FA, tokens are returned immediately.
+
+If 2FA is enabled, returns \`{ requiresTwoFactor: true, pendingToken }\` instead.
+
+**Step 2 — 2FA completion**: send \`{ email, password, pendingToken, code }\`.
+
+Only \`pendingToken\` and \`code\` are verified — the password is not re-checked (it was already verified in step 1).
+
+The \`pendingToken\` expires in 5 minutes.`,
   request: jsonBody(LoginBodySchema, {
     'password-only': {
       summary: 'No 2FA — email & password',
@@ -111,7 +120,7 @@ registry.registerPath({
   path: '/auth/logout',
   tags: ['Auth'],
   summary: 'Logout — invalidate refresh token',
-  description: 'Reads the refresh token from the `__secure-rt` httpOnly cookie. No request body required.',
+  description: 'Reads the refresh token from the `rt` httpOnly cookie. No request body required.',
   security: [{ refreshTokenAuth: [] }],
   responses: {
     200: {
@@ -131,8 +140,9 @@ registry.registerPath({
   path: '/auth/refresh-token',
   tags: ['Auth'],
   summary: 'Issue new access token from refresh token',
-  description:
-    'Reads the refresh token from the `__secure-rt` httpOnly cookie. Returns a new access token in the response body and rotates the refresh token cookie. No request body required.',
+  description: `Reads the refresh token from the \`rt\` httpOnly cookie.
+
+Returns a new access token in the response body and rotates the refresh token cookie. No request body required.`,
   security: [{ refreshTokenAuth: [] }],
   responses: {
     200: {
@@ -179,15 +189,36 @@ registry.registerPath({
   path: '/auth/google/callback',
   tags: ['Auth - Google OAuth'],
   summary: 'Exchange Google OAuth code for tokens',
-  description:
-    'Called by the frontend after Google redirects to the FE callback page with `code` and `state` query params.\n\n**Flow:**\n1. FE calls `GET /auth/google` to get the auth URL\n2. User is redirected to Google and approves access\n3. Google redirects to the **frontend** callback page with `?code=...&state=...`\n4. FE extracts `code` and `state` from the URL, then POSTs them here\n5. Server exchanges the code for tokens and returns `accessToken` + `user`\n\nThe `GOOGLE_CALLBACK_URL` env var must point to the frontend callback page and match the Authorized Redirect URI in Google Cloud Console.',
+  description: `Called by the frontend after Google redirects to the FE callback page with \`code\` and \`state\` query params.
+
+**Flow:**
+1. FE calls \`GET /auth/google\` to get the auth URL
+
+2. User is redirected to Google and approves access
+
+3. Google redirects to the **frontend** callback page with \`?code=...&state=...\`
+
+4. FE extracts \`code\` and \`state\` from the URL, then POSTs them here
+
+5. Server exchanges the code for tokens and returns \`accessToken\` + \`user\`
+
+If the account has 2FA enabled, returns \`{ requiresTwoFactor: true, pendingToken }\` instead.
+
+Complete login via \`POST /auth/2fa/verify\`.
+
+The \`GOOGLE_CALLBACK_URL\` env var must point to the frontend callback page
+
+and match the Authorized Redirect URI in Google Cloud Console.`,
   request: jsonBody(GoogleCallbackBodySchema),
   responses: {
     200: {
-      description: 'Login successful',
+      description: 'Login successful **or** 2FA required',
       content: {
         'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/google/callback', 200, 'Google authentication successful')
+          schema: z.union([
+            successWrapper(AuthResponseSchema, '/auth/google/callback', 200, 'Google authentication successful'),
+            successWrapper(TwoFactorRequiredSchema, '/auth/google/callback', 200, 'Two-factor authentication required')
+          ])
         }
       }
     },
@@ -202,11 +233,53 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/auth/2fa/verify',
+  tags: ['Auth - 2FA'],
+  summary: 'Complete 2FA login with pending token',
+  description: `Completes a pending 2FA login using only \`pendingToken\` + TOTP \`code\`.
+
+  Use this after receiving \`{ requiresTwoFactor: true, pendingToken }\` from \`POST /auth/google/callback\`.
+
+  For password-based 2FA completion, use \`POST /auth/login\` with \`{ email, password, pendingToken, code }\` instead.
+
+The \`pendingToken\` is consumed on success.`,
+  request: jsonBody(
+    z.object({
+      pendingToken: z.string().min(1).meta({ example: 'a3f8d2c1e4b57f9a...' }),
+      code: z
+        .string()
+        .length(6)
+        .regex(/^\d{6}$/)
+        .meta({ example: '123456' })
+    })
+  ),
+  responses: {
+    200: {
+      description: 'Login successful',
+      content: {
+        'application/json': {
+          schema: successWrapper(AuthResponseSchema, '/auth/2fa/verify', 200, 'Login successful')
+        }
+      }
+    },
+    400: badRequestResponse('Invalid 2FA code'),
+    401: unauthorizedResponse('Invalid or expired 2FA session'),
+    404: notFoundResponse('User not found'),
+    422: validationErrorResponse(),
+    429: rateLimitResponse()
+  }
+})
+
+registry.registerPath({
+  method: 'post',
   path: '/auth/forgot-password',
   tags: ['Auth - Email'],
   summary: 'Request a password reset email',
-  description:
-    'Sends a 6-digit OTP code to the provided email address.\n\n**Requirements**: User must have verified their email address and have a password (email/password auth only, not Google OAuth).\n\nAlways returns 200 regardless of whether the email exists (privacy protection). Rate limited.',
+  description: `Sends a 6-digit OTP code to the provided email address.
+
+**Requirements**: User must have verified their email address and have a password (email/password auth only, not Google OAuth).
+
+Always returns 200 regardless of whether the email exists (privacy protection). Rate limited.`,
   request: jsonBody(ForgotPasswordBodySchema),
   responses: {
     200: {
@@ -273,8 +346,13 @@ registry.registerPath({
   path: '/auth/2fa/setup',
   tags: ['Auth - 2FA'],
   summary: 'Initiate 2FA setup — get otpauth URL',
-  description:
-    'Generates a TOTP secret for the authenticated user. Returns an `otpauthUrl` (`otpauth://totp/...`) to render a QR code client-side, and a `setUpToken` (valid 5 minutes) required to confirm setup.\n\nRender the QR code from `otpauthUrl` using any QR library, then scan it with an authenticator app.\n\n**2FA is not active until confirmed via `POST /auth/2fa/setup/confirm`.**',
+  description: `Generates a TOTP secret for the authenticated user.
+
+  Returns an \`otpauthUrl\` (\`otpauth://totp/...\`) to render a QR code client-side, and a \`setUpToken\` (valid 5 minutes) required to confirm setup.
+
+Render the QR code from \`otpauthUrl\` using any QR library, then scan it with an authenticator app.
+
+**2FA is not active until confirmed via \`POST /auth/2fa/setup/confirm\`.**`,
   security: [{ bearerAuth: [] }],
   responses: {
     200: {
@@ -302,8 +380,11 @@ registry.registerPath({
   path: '/auth/2fa/setup/confirm',
   tags: ['Auth - 2FA'],
   summary: 'Confirm and activate 2FA',
-  description:
-    'Verifies the 6-digit TOTP code from the authenticator app and permanently enables 2FA for the account.\n\nRequires the `setUpToken` returned by `GET /auth/2fa/setup` (expires in 5 minutes). The `setUpToken` is consumed on success.',
+  description: `Verifies the 6-digit TOTP code from the authenticator app and permanently enables 2FA for the account.
+
+Requires the \`setUpToken\` returned by \`GET /auth/2fa/setup\` (expires in 5 minutes).
+
+The \`setUpToken\` is consumed on success.`,
   security: [{ bearerAuth: [] }],
   request: jsonBody(ConfirmTwoFactorBodySchema),
   responses: {
