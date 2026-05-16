@@ -106,12 +106,6 @@ class AuthController {
     return AuthController.handleGoogleCallback(body, res)
   }
 
-  static async verifyGoogleCallbackQuery(req: Request, res: Response) {
-    const query = req.query as GoogleCallbackBody
-
-    return AuthController.handleGoogleCallback(query, res)
-  }
-
   static async verifyEmail(req: Request, res: Response) {
     const { token } = req.body as VerifyEmailBody
     await AuthService.verifyEmail(token)

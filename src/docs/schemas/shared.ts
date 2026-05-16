@@ -109,7 +109,13 @@ export const AuthUserSchema = registry.register(
     fullName: z.string().meta({ example: 'Kim Nguyen' }),
     role: z.enum(['user', 'admin']).meta({ example: 'user' }),
     googleId: z.string().nullable().optional().meta({ example: null }),
-    avatarUrl: z.string().url().nullable().optional().meta({ example: null })
+    avatarUrl: z.string().url().nullable().optional().meta({ example: null }),
+    isEmailVerified: z
+      .boolean()
+      .meta({ example: true, description: 'Whether the user has verified their email address' }),
+    isTwoFactorEnabled: z
+      .boolean()
+      .meta({ example: false, description: 'Whether two-factor authentication is enabled' })
   })
 )
 

@@ -11,7 +11,10 @@ export type AuthUser = {
   email: string
   fullName: string
   role: UserRole
+  googleId?: string | null
   avatarUrl?: string | null
+  isEmailVerified: boolean
+  isTwoFactorEnabled: boolean
 }
 
 export type AuthResponse = AuthTokens & {

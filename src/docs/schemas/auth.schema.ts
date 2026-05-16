@@ -171,38 +171,12 @@ registry.registerPath({
 })
 
 registry.registerPath({
-  method: 'get',
-  path: '/auth/google/callback',
-  tags: ['Auth - Google OAuth'],
-  summary: 'Google OAuth callback via query params',
-  description:
-    '⚠️ **Cannot be tested via Swagger "Try it out"** — This is a redirect endpoint. Google automatically redirects the user here with `code` and `state` query parameters after OAuth approval. Do not manually call this endpoint.',
-  request: {
-    query: GoogleCallbackBodySchema
-  },
-  responses: {
-    200: {
-      description: 'Login successful',
-      content: {
-        'application/json': {
-          schema: successWrapper(AuthResponseSchema, '/auth/google/callback', 200, 'Google authentication successful')
-        }
-      }
-    },
-    401: unauthorizedResponse('Invalid or expired OAuth state / Google account mismatch'),
-    409: conflictResponse('Email already registered with password — link Google from account settings'),
-    422: validationErrorResponse(),
-    429: rateLimitResponse()
-  }
-})
-
-registry.registerPath({
   method: 'post',
   path: '/auth/google/callback',
   tags: ['Auth - Google OAuth'],
-  summary: 'Google OAuth callback via body (mobile / SPA)',
+  summary: 'Exchange Google OAuth code for tokens',
   description:
-    'Alternative OAuth callback method for mobile apps or SPAs. Frontend receives `code` and `state` from Google, then sends them to this endpoint.',
+    'Called by the frontend after Google redirects to the FE callback page with `code` and `state` query params.\n\n**Flow:**\n1. FE calls `GET /auth/google` to get the auth URL\n2. User is redirected to Google and approves access\n3. Google redirects to the **frontend** callback page with `?code=...&state=...`\n4. FE extracts `code` and `state` from the URL, then POSTs them here\n5. Server exchanges the code for tokens and returns `accessToken` + `user`\n\nThe `GOOGLE_CALLBACK_URL` env var must point to the frontend callback page and match the Authorized Redirect URI in Google Cloud Console.',
   request: jsonBody(GoogleCallbackBodySchema),
   responses: {
     200: {
