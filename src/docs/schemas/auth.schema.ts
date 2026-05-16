@@ -26,7 +26,8 @@ import {
   TokenPairSchema,
   AuthUserSchema,
   AuthResponseSchema,
-  forbiddenResponse
+  forbiddenResponse,
+  notFoundResponse
 } from './shared'
 
 const TwoFactorRequiredSchema = registry.register(
@@ -97,7 +98,9 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Invalid credentials'),
+    400: badRequestResponse('Invalid 2FA code'),
+    401: unauthorizedResponse('Invalid credentials or expired 2FA session'),
+    404: notFoundResponse('User not found'),
     422: validationErrorResponse(),
     429: rateLimitResponse()
   }
@@ -140,7 +143,8 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Invalid or expired refresh token')
+    401: unauthorizedResponse('Invalid or expired refresh token'),
+    404: notFoundResponse('User not found')
   }
 })
 
@@ -187,7 +191,9 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Invalid or expired OAuth state / Google account mismatch'),
+    400: badRequestResponse('Google authentication failed'),
+    401: unauthorizedResponse('Invalid or expired OAuth state'),
+    403: forbiddenResponse('Google email not verified, or email linked to a different Google account'),
     409: conflictResponse('Email already registered with password — link Google from account settings'),
     422: validationErrorResponse(),
     429: rateLimitResponse()
@@ -233,7 +239,7 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Invalid, expired or already used OTP token'),
+    400: badRequestResponse('Invalid, expired or already used OTP token'),
     422: validationErrorResponse(),
     429: rateLimitResponse()
   }
@@ -256,7 +262,7 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Invalid, expired or already used verification token'),
+    400: badRequestResponse('Invalid, expired or already used verification token'),
     422: validationErrorResponse(),
     429: rateLimitResponse()
   }
@@ -286,6 +292,7 @@ registry.registerPath({
     },
     401: unauthorizedResponse('Missing or invalid access token'),
     403: forbiddenResponse('Email must be verified before enabling 2FA'),
+    404: notFoundResponse('User not found'),
     409: conflictResponse('2FA is already enabled')
   }
 })
@@ -310,6 +317,7 @@ registry.registerPath({
     },
     400: badRequestResponse('Invalid TOTP code'),
     401: unauthorizedResponse('Missing or invalid access token, or setUpToken expired / mismatched'),
+    404: notFoundResponse('User not found'),
     409: conflictResponse('2FA is already enabled'),
     422: validationErrorResponse()
   }
@@ -333,8 +341,9 @@ registry.registerPath({
         }
       }
     },
-    400: badRequestResponse('Invalid TOTP code'),
+    400: badRequestResponse('Invalid TOTP code or 2FA is not enabled'),
     401: unauthorizedResponse('Missing or invalid access token'),
+    404: notFoundResponse('User not found'),
     422: validationErrorResponse()
   }
 })

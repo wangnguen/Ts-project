@@ -2,7 +2,7 @@ import axios from 'axios'
 
 import { env } from '@common/config'
 import { GOOGLE_AUTH } from '@common/constants'
-import { UnauthorizedError } from '@common/errors'
+import { BadRequestError, ForbiddenError } from '@common/errors'
 import { GoogleTokenResponse, GoogleUserInfo } from '@common/types/auth.type'
 
 class GoogleService {
@@ -30,7 +30,7 @@ class GoogleService {
       const userInfo = userResponse.data as GoogleUserInfo
 
       if (!userInfo.verified_email) {
-        throw new UnauthorizedError('Google account email is not verified.')
+        throw new ForbiddenError('Google account email is not verified.')
       }
 
       return {
@@ -40,8 +40,8 @@ class GoogleService {
         avatarUrl: userInfo.picture || null
       }
     } catch (error) {
-      if (error instanceof UnauthorizedError) throw error
-      throw new UnauthorizedError('Google authentication failed. Please try again.')
+      if (error instanceof ForbiddenError) throw error
+      throw new BadRequestError('Google authentication failed. Please try again.')
     }
   }
 }

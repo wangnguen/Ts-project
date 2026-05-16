@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt'
 import { instanceToPlain } from 'class-transformer'
 
 import { SALT_ROUNDS } from '@common/constants'
-import { ConflictError, NotFoundError, UnauthorizedError } from '@common/errors'
+import { BadRequestError, ConflictError, NotFoundError } from '@common/errors'
 import { comparePassword } from '@common/utils/password'
 
 import AuthRepository from '@modules/auth/auth.repository'
@@ -50,12 +50,12 @@ class UserService {
     }
 
     if (!user.password) {
-      throw new UnauthorizedError('Account does not have a password set')
+      throw new BadRequestError('Account does not have a password set')
     }
 
     const isCurrentPasswordValid = await comparePassword(dto.currentPassword, user.password)
     if (!isCurrentPasswordValid) {
-      throw new UnauthorizedError('Current password is incorrect')
+      throw new BadRequestError('Current password is incorrect')
     }
     const newPasswordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS)
     await UserRepository.updateUserPassword(id, newPasswordHash)

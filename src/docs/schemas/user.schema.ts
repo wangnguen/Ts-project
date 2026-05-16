@@ -10,6 +10,8 @@ import {
   unauthorizedResponse,
   conflictResponse,
   validationErrorResponse,
+  badRequestResponse,
+  notFoundResponse,
   AuthUserSchema
 } from './shared'
 
@@ -28,7 +30,8 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Missing or invalid access token')
+    401: unauthorizedResponse('Missing or invalid access token'),
+    404: notFoundResponse('User not found')
   }
 })
 
@@ -49,6 +52,7 @@ registry.registerPath({
       }
     },
     401: unauthorizedResponse('Missing or invalid access token'),
+    404: notFoundResponse('User not found'),
     409: conflictResponse('Username already taken'),
     422: validationErrorResponse()
   }
@@ -70,7 +74,9 @@ registry.registerPath({
         }
       }
     },
-    401: unauthorizedResponse('Missing or invalid access token or incorrect current password'),
+    400: badRequestResponse('Incorrect current password or account has no password set'),
+    401: unauthorizedResponse('Missing or invalid access token'),
+    404: notFoundResponse('User not found'),
     422: validationErrorResponse()
   }
 })
@@ -85,6 +91,7 @@ registry.registerPath({
     204: {
       description: 'Account deleted successfully'
     },
-    401: unauthorizedResponse('Missing or invalid access token')
+    401: unauthorizedResponse('Missing or invalid access token'),
+    404: notFoundResponse('User not found')
   }
 })

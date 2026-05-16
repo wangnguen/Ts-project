@@ -10,7 +10,7 @@ import {
   SALT_ROUNDS,
   VERIFY_EMAIL_EXPIRE_MINUTES
 } from '@common/constants'
-import { BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '@common/errors'
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '@common/errors'
 import { EmailService, JWTService } from '@common/services'
 import { AuthResponse, AuthUser, GoogleProfile, LoginResult } from '@common/types'
 import { comparePassword } from '@common/utils/password'
@@ -30,7 +30,7 @@ class AuthService {
 
   static async setup2FA(userId: string): Promise<{ otpauthUrl: string; setUpToken: string }> {
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!user) throw new UnauthorizedError('User not found')
+    if (!user) throw new NotFoundError('User not found')
     if (!user.isEmailVerified) throw new ForbiddenError('Email must be verified before enabling 2FA')
     if (user.isTwoFactorEnabled) throw new ConflictError('2FA is already enabled')
 
@@ -47,7 +47,7 @@ class AuthService {
     if (!tokenData || tokenData.userId !== userId) throw new UnauthorizedError('Invalid or expired setup session')
 
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!user) throw new UnauthorizedError('User not found')
+    if (!user) throw new NotFoundError('User not found')
     if (user.isTwoFactorEnabled) throw new ConflictError('2FA is already enabled')
 
     const { valid } = verifySync({ token: code, secret: tokenData.secret })
@@ -59,7 +59,7 @@ class AuthService {
 
   static async disable2FA(userId: string, code: string): Promise<void> {
     const user = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!user) throw new UnauthorizedError('User not found')
+    if (!user) throw new NotFoundError('User not found')
     if (!user.isTwoFactorEnabled || !user.twoFactorSecret) throw new BadRequestError('2FA is not enabled')
 
     const { valid } = verifySync({ token: code, secret: user.twoFactorSecret })
@@ -126,7 +126,7 @@ class AuthService {
     await AuthRepository.deleteRefreshTokenById(storedToken.id)
 
     const user = await AuthRepository.findById(userId)
-    if (!user) throw new UnauthorizedError('User not found')
+    if (!user) throw new NotFoundError('User not found')
 
     const accessToken = JWTService.generateAccessToken({ sub: user.id, email: user.email, role: user.role })
     const newRefreshToken = JWTService.generateRefreshToken({ sub: user.id })
@@ -166,7 +166,7 @@ class AuthService {
 
     if (existingUser) {
       if (existingUser.googleId && existingUser.googleId !== profile.googleId) {
-        throw new UnauthorizedError('This email is already linked to a different Google account.')
+        throw new ForbiddenError('This email is already linked to a different Google account.')
       }
 
       if (!existingUser.googleId) {
@@ -200,7 +200,7 @@ class AuthService {
   static async verifyEmail(token: string): Promise<void> {
     const authToken = await AuthRepository.findAuthToken(hashAuthToken(token), AUTH_TOKEN.VERIFY_EMAIL)
     if (!authToken || authToken.expiresAt < new Date() || authToken.usedAt) {
-      throw new UnauthorizedError('Invalid or expired token')
+      throw new BadRequestError('Invalid or expired token')
     }
 
     await Promise.all([
@@ -229,7 +229,7 @@ class AuthService {
   static async resetPassword(token: string, newPassword: string): Promise<void> {
     const authToken = await AuthRepository.findAuthToken(hashAuthToken(token), AUTH_TOKEN.RESET_PASSWORD)
     if (!authToken || authToken.expiresAt < new Date() || authToken.usedAt) {
-      throw new UnauthorizedError('Invalid or expired token')
+      throw new BadRequestError('Invalid or expired token')
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS)
@@ -289,10 +289,10 @@ class AuthService {
     if (!userId || userId !== existingUser.id) throw new UnauthorizedError('Invalid or expired 2FA session')
 
     const userWith2FA = await AuthRepository.findByIdWithTwoFactorSecret(userId)
-    if (!userWith2FA || !userWith2FA.twoFactorSecret) throw new UnauthorizedError('User not found')
+    if (!userWith2FA || !userWith2FA.twoFactorSecret) throw new NotFoundError('User not found')
 
     const { valid } = verifySync({ token: dto.code, secret: userWith2FA.twoFactorSecret })
-    if (!valid) throw new UnauthorizedError('Invalid 2FA code')
+    if (!valid) throw new BadRequestError('Invalid 2FA code')
 
     AuthCacheService.consumePendingLoginToken(dto.pendingToken)
     const { accessToken, refreshToken } = await AuthService.generateTokens(userWith2FA)
