@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 import express from 'express'
 import swaggerUi from 'swagger-ui-express'
 
@@ -18,6 +20,8 @@ applyAppMiddlewares(app)
 app.get('/', (_req, res) => res.redirect('/docs'))
 
 app.use('/api/v1', moduleRoutes)
+
+app.use('/uploads', express.static(path.resolve(env.STORAGE_DIR)))
 
 if (env.ENABLE_DOCS) {
   const document = buildOpenAPIDocument()
