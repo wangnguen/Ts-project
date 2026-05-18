@@ -1,25 +1,29 @@
 import { z } from 'zod/v4'
 
-const envSchema = z.object({
+const serverEnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CLIENT_URL: z.string().url(),
+  CLIENT_URL: z.url(),
   CLIENT_ORIGINS: z
     .string()
-    .transform((val) => val.split(',').map((url) => url.trim()))
+    .transform((val) =>
+      val
+        .split(',')
+        .map((url) => url.trim())
+        .filter(Boolean)
+    )
     .refine(
-      (urls) =>
-        urls.every((url) => {
-          try {
-            new URL(url)
-            return true
-          } catch {
-            return false
-          }
-        }),
+      (urls) => urls.length > 0 && urls.every((url) => z.url().safeParse(url).success),
       'Each CLIENT_ORIGINS must be a valid URL'
     ),
-  DATABASE_URL: z.url(),
+  ENABLE_DOCS: z.stringbool().default(true)
+})
+
+const databaseEnvSchema = z.object({
+  DATABASE_URL: z.url()
+})
+
+const authEnvSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
   REFRESH_TOKEN_HASH_SECRET: z.string().min(32),
@@ -38,21 +42,48 @@ const envSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(30 * 24 * 60 * 60),
+    .default(30 * 24 * 60 * 60)
+})
+
+const googleEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
-  GOOGLE_CALLBACK_URL: z.url().default('http://localhost:8080/api/v1/auth/google/callback'),
+  GOOGLE_CALLBACK_URL: z.url().default('http://localhost:8080/api/v1/auth/google/callback')
+})
+
+const emailEnvSchema = z.object({
   EMAIL_PROVIDER: z.enum(['nodemailer', 'resend']).default('nodemailer'),
   MAIL_FROM: z.email().default('noreply@example.com'),
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().int().default(587),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
-  RESEND_API_KEY: z.string().default(''),
+  RESEND_API_KEY: z.string().default('')
+})
+
+const appEnvSchema = z.object({
   APP_NAME: z.string().min(1).default('Ts Project'),
   VERIFY_EMAIL_EXPIRE_MINUTES: z.coerce.number().int().positive().default(10),
-  RESET_PASSWORD_EXPIRE_MINUTES: z.coerce.number().int().positive().default(5),
-  ENABLE_DOCS: z.coerce.boolean().default(true)
+  RESET_PASSWORD_EXPIRE_MINUTES: z.coerce.number().int().positive().default(5)
+})
+
+const storageEnvSchema = z.object({
+  STORAGE_DIR: z.string().min(1).default('uploads')
+})
+
+const dockerEnvSchema = z.object({
+  DOCKERHUB_USERNAME: z.string().default('')
+})
+
+const envSchema = z.object({
+  ...serverEnvSchema.shape,
+  ...databaseEnvSchema.shape,
+  ...authEnvSchema.shape,
+  ...googleEnvSchema.shape,
+  ...emailEnvSchema.shape,
+  ...appEnvSchema.shape,
+  ...dockerEnvSchema.shape,
+  ...storageEnvSchema.shape
 })
 
 export type EnvSchema = z.infer<typeof envSchema>
