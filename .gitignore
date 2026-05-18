@@ -34,3 +34,6 @@ coverage
 .agent/
 .claude/
 CLAUDE.MD
+
+# Uploaded files
+uploads/

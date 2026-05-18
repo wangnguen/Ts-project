@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 
 const RenameFileBodyBaseSchema = z.object({
-  folderPath: z.string().min(1),
+  folderPath: z.string().optional(),
   oldFileName: z.string().min(1),
   newFileName: z.string().min(1)
 })

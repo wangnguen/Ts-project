@@ -3,38 +3,33 @@ import { Request, Response } from 'express'
 import StorageService from '@modules/storage/storage.service'
 
 import {
-  CreateFolderBodySchema,
-  DeleteFileBodySchema,
-  DeleteFolderBodySchema,
+  CreateFolderBody,
+  DeleteFileBody,
+  DeleteFolderBody,
   ListFolderQuerySchema,
-  RenameFileBodySchema,
-  UploadFileBodySchema
+  RenameFileBody,
+  UploadFileBody
 } from './dto'
 
 class StorageController {
   static async upload(req: Request, res: Response) {
     const files = req.files as Express.Multer.File[]
-    const body = UploadFileBodySchema.parse(req.body)
-    const saveLinks = StorageService.uploadFiles(files, body)
-
+    const saveLinks = StorageService.uploadFiles(files, req.body as UploadFileBody)
     return res.created({ saveLinks }, { message: 'Uploaded successfully' })
   }
 
   static async renameFile(req: Request, res: Response) {
-    const body = RenameFileBodySchema.parse(req.body)
-    StorageService.renameFile(body)
+    StorageService.renameFile(req.body as RenameFileBody)
     return res.ok(null, { message: 'File renamed successfully' })
   }
 
   static async deleteFile(req: Request, res: Response) {
-    const body = DeleteFileBodySchema.parse(req.body)
-    StorageService.deleteFile(body)
+    StorageService.deleteFile(req.body as DeleteFileBody)
     return res.ok(null, { message: 'File deleted successfully' })
   }
 
   static async createFolder(req: Request, res: Response) {
-    const body = CreateFolderBodySchema.parse(req.body)
-    StorageService.createFolder(body)
+    StorageService.createFolder(req.body as CreateFolderBody)
     return res.created(null, { message: 'Folder created successfully' })
   }
 
@@ -51,8 +46,7 @@ class StorageController {
   }
 
   static async deleteFolder(req: Request, res: Response) {
-    const body = DeleteFolderBodySchema.parse(req.body)
-    StorageService.deleteFolder(body)
+    StorageService.deleteFolder(req.body as DeleteFolderBody)
     return res.ok(null, { message: 'Folder deleted successfully' })
   }
 }

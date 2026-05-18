@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 
 const DeleteFileBodyBaseSchema = z.object({
-  folderPath: z.string().min(1),
+  folderPath: z.string().optional(),
   fileName: z.string().min(1)
 })
 

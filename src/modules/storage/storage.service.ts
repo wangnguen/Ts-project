@@ -21,7 +21,8 @@ class StorageService {
 
     return files.map((file) => {
       const ext = path.extname(file.originalname)
-      const filename = `${crypto.randomUUID()}${ext}`
+      const baseName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, '-')
+      const filename = `${crypto.randomUUID()}-${baseName}${ext}`
       fs.writeFileSync(path.join(storageDir, filename), file.buffer)
       return {
         url: `/uploads${body.folderPath ? `/${body.folderPath}` : ''}/${filename}`,

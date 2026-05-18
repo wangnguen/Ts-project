@@ -2,7 +2,7 @@ import { z } from 'zod/v4'
 
 const CreateFolderBodyBaseSchema = z.object({
   folderName: z.string().min(1),
-  folderPath: z.string().min(1)
+  folderPath: z.string().optional()
 })
 
 export const CreateFolderBodyExample = {
